@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+
+    <div class="card-title">
+
+        Eligible Scholarships
+
+    </div>
+
+    <p>
+
+        The following scholarships are currently
+        available based on your academic profile
+        and submitted scholarship information.
+
+    </p>
+
+</div>
+
+
+{% if scholarships %}
+
+    {% for scholarship in scholarships %}
+
+        <div class="card scholarship-card">
+            <div class="scholarship-row">
+                <div class="scholarship-info">
+                    <h3>{{ scholarship.scholarship_name }}</h3>
+                    <p><strong>Scholarship Amount:</strong> {{ scholarship.scholarship_amount }}</p>
+                    <p><strong>Number of Awards:</strong> {{ scholarship.no_of_scholarships }}</p>
+                </div>
+                <div class="scholarship-actions">
+                    <a href="{% url 'scholarship_detail' scholarship.scholarship_id %}" class="btn-save">View Details</a>
+                </div>
+            </div>
+        </div>
+
+    {% endfor %}
+
+{% else %}
+
+<div class="card">
+
+    <h3>
+
+        No Scholarship Available
+
+    </h3>
+
+    <p>
+
+        Based on the currently available
+        eligibility information, no scholarship
+        matches your profile.
+
+    </p>
+
+</div>
+
+{% endif %}
+
+{% endblock %}

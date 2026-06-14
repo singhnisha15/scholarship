@@ -1,0 +1,65 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>
+        {% block title %}
+        Scholarship Management System
+        {% endblock %}
+    </title>
+
+    <link rel="stylesheet"
+          href="{% static 'css/style.css' %}">
+
+</head>
+
+<body>
+
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div class="success-box">
+
+                {{ message }}
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+<div class="main-wrapper">
+
+    <header class="top-header">
+
+        <div class="header-left">
+
+            <h1>
+                Scholarship Management System
+            </h1>
+
+            <div class="sub-title">
+                Indian Institute of Technology (BHU), Varanasi
+            </div>
+
+        </div>
+
+    </header>
+
+    <main>
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+</div>
+
+</body>
+</html>

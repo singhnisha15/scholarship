@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+
+<div class="card-title">
+
+Scholarship Status
+
+</div>
+
+<p>
+
+As you are already holding
+the following scholarship,
+no more scholarships may
+be awarded to you.
+
+</p>
+
+<table>
+
+<tr>
+
+<th>Scholarship</th>
+
+<th>Year</th>
+
+<th>Status</th>
+
+</tr>
+
+{% for award in awards %}
+
+<tr>
+
+<td>
+{{ award.scholarship.scholarship_name }}
+</td>
+
+<td>
+{{ award.award_year }}
+</td>
+
+<td>
+{{ award.status }}
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}

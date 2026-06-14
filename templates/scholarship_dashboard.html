@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}
+Scholarship Office Dashboard
+{% endblock %}
+
+{% block content %}
+
+<h2>Scholarship Office Dashboard</h2>
+
+<div class="summary-grid">
+
+    <div class="summary-card">
+        <div class="summary-value">
+            {{ total_scholarships }}
+        </div>
+        <div class="summary-title">
+            Total Scholarships
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-value">
+            {{ active_scholarships }}
+        </div>
+        <div class="summary-title">
+            Active Scholarships
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-value">
+            {{ applications }}
+        </div>
+        <div class="summary-title">
+            Applications
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-value">
+            {{ awarded }}
+        </div>
+        <div class="summary-title">
+            Awarded Students
+        </div>
+    </div>
+
+</div>
+
+
+<div class="dashboard-grid">
+
+    <div class="card dashboard-card">
+
+        <div class="dashboard-icon">
+            🎓
+        </div>
+
+        <h3>Create Scholarship</h3>
+
+        <p>
+            Create new scholarships and define their eligibility criteria.
+        </p>
+
+        <a href="{% url 'scholarship_create' %}" class="btn-save">
+            Open
+        </a>
+
+    </div>
+
+
+    <div class="card dashboard-card">
+
+        <div class="dashboard-icon">
+            📋
+        </div>
+
+        <h3>Manage Scholarships</h3>
+
+        <p>
+            View, modify, deactivate or delete existing scholarships.
+        </p>
+
+        <a href="{% url 'manage_scholarships' %}" class="btn-save">
+            Open
+        </a>
+
+    </div>
+
+
+    <div class="card dashboard-card">
+
+        <div class="dashboard-icon">
+            👨‍🎓
+        </div>
+
+        <h3>Assign Scholarships</h3>
+
+        <p>
+            Review applications and assign scholarships to eligible students.
+        </p>
+
+        <button class="btn-secondary" disabled>
+            Coming Soon
+        </button>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -25,5 +25,8 @@ services:
     depends_on:
       - db
 
+    volumes:
+      - .:/app
+
 volumes:
   mysql_data:

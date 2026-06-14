@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+    {% extends "base.html" %}
+
+    {% block title %}
+    {% if scholarship %}Edit Scholarship{% else %}Create Scholarship{% endif %}
+    {% endblock %}
+
+    {% block content %}
+
+  <div class="page-header">
+
+      <h1>{% if scholarship %}Edit Scholarship{% else %}Create Scholarship{% endif %}</h1>
+
+      <a href="{% url 'scholarship_dashboard' %}" class="btn-secondary">
+          Back to Dashboard
+      </a>
+
+  </div>
+
+
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert-success">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<form method="post" action="{% if scholarship %}{% url 'edit_scholarship' scholarship.scholarship_id %}{% else %}{% url 'scholarship_create' %}{% endif %}">
+
+    {% csrf_token %}
+
+    <div class="card">
+
+        <div class="card-title">        Scholarship Details    </div>
+
+
+        <div class="scholarship-grid">
+
+            <div class="row">
+                <label>Scholarship Name</label>
+                <input type="text" name="scholarship_name" value="{{ scholarship.scholarship_name|default:'' }}">
+            </div>
+
+            <div class="row">
+                <label>No. of Scholarships</label>
+                <input type="text" name="no_of_scholarships" value="{{ scholarship.no_of_scholarships|default:'' }}">
+            </div>
+
+            <div class="row">
+                <label>Scholarship Amount</label>
+                <input type="text" name="scholarship_amount" value="{{ scholarship.scholarship_amount|default:'' }}">
+            </div>
+
+            <div></div>
+
+            <div class="row description-row">
+                <label>Description</label>
+                <textarea name="description">{{ scholarship.description|default:'' }}</textarea>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card">
+
+        <div class="card-title">
+            Eligibility Criteria
+        </div>
+
+        {% for c in criteria %}
+
+            <div class="row criteria-row">
+
+                <label>
+                    {{ c.criteria_name }}
+                    {% if c.data_type != 'BOOLEAN' %}
+                        ({{ c.allowed_operator }})
+                    {% endif %}
+                </label>
+
+                {% if c.data_type == 'LIST' %}
+
+                    {% if c.allowed_operator == 'IN' or c.allowed_operator == 'NOT_IN' %}
+
+                        <select multiple name="criteria_{{ c.criteria_id }}">
+                            {% for val in c.allowed_values %}
+                                <option value="{{ val }}" {% if c.value and val in c.value %}selected{% endif %}>{{ val }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <small>
+                            Leave unselected if not applicable, use ctrl+click to multiselect/unselect
+                        </small>
+
+                    {% else %}
+
+                        <select name="criteria_{{ c.criteria_id }}">
+                            <option value="">-- Any --</option>
+
+                            {% for val in c.allowed_values %}
+                                <option value="{{ val }}" {% if c.value == val %}selected{% endif %}>{{ val }}</option>
+                            {% endfor %}
+                        </select>
+
+                    {% endif %}
+
+
+                {% elif c.data_type == 'NUMBER' %}
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="criteria_{{ c.criteria_id }}"
+                        placeholder="Leave blank if not applicable"
+                        value="{{ c.value|default:'' }}"
+                    >
+
+                {% elif c.data_type == 'BOOLEAN' %}
+
+                    <select name="criteria_{{ c.criteria_id }}">
+                        <option value="">-- Any --</option>
+                        <option value="Yes" {% if c.value == "Yes" %}selected{% endif %}>Yes</option>
+                        <option value="No" {% if c.value == "No" %}selected{% endif %}>No</option>
+                    </select>
+
+                {% endif %}
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+    <div class="button-bar">
+        <button
+            type="submit"
+            class="btn-save">
+            {% if scholarship %}Update Scholarship{% else %}Save Scholarship{% endif %}
+        </button>
+        <a href="{% url 'bulk_upload_scholarships' %}" class="btn-secondary">
+            Go For Bulk Upload
+        </a>
+    </div>
+
+
+    </form>
+
+    
+
+{% endblock %}

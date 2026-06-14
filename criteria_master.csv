@@ -1,0 +1,14 @@
+criteria_id	criteria_name	data_type	allowed_operator	allowed_values	display_order	is_active
+1	Gender	LIST	=	["Male", "Female"]	1	1
+2	Program	LIST	IN	["B.Tech", "M.Tech", "IDD", "Ph.D"]	2	1
+3	Current Semester	LIST	IN	["Semester-I", "Semester-II", "Semester-III", "Semester-IV", "Semester-V", "Semester-VI", "Semester-VII", "Semester-VIII", "Semester-IX", "Semester-X"]	3	1
+4	Department	LIST	IN	["Architecture, Planning & Design", "Ceramic Engineering", "Chemical Engineering & Technology", "Civil Engineering", "Computer Science & Engineering", "Electrical Engineering", "Electronics Engineering", "Mechanical Engineering", "Metallurgical Engineering", "Mining Engineering", "Pharmaceutical Engineering", "Biochemical Engineering", "Biomedical Engineering", "Decision Science & Engineering", "Materials Science & Technology", "Chemistry", "Mathematical Sciences", "Physics", "Humanistic Studies"]	4	1
+5	CPI	NUMBER	>	NULL	5	1
+6	SPI	NUMBER	>	NULL	6	1
+7	Income	NUMBER	<	NULL	7	1
+8	Category	LIST	=	["PwD", "SC", "ST", "OBC", "EWS"]	8	1
+9	Grade	LIST	NOT_IN	["F", "X", "I", "Y"]	9	1
+10	Age	NUMBER	<	NULL	10	1
+11	Credits Complete	BOOLEAN	=	["Yes", "No"]	11	1
+12	Single Parent	BOOLEAN	=	["Yes", "No"]	12	1
+13	Disciplinary Action	BOOLEAN	=	["Yes", "No"]	13	1

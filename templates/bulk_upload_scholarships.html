@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+    {% block title %}
+    Bulk Upload Scholarships
+    {% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div class="card-title"> Bulk Upload Scholarships </div>
+
+    <form method="post" enctype="multipart/form-data">
+
+        {% csrf_token %}
+        <div class="row">
+            <label> Scholarship Excel/CSV File </label>
+            <input type="file" name="file" accept=".xlsx,.xls,.csv" required >
+        </div>
+
+        <button type="submit" class="btn-save">
+            Upload
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

@@ -1,5 +1,24 @@
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Virtual environments
+venv/
 .env
-db.sqlite3
+
+# Django
+*.log
+media/
+
+# VS Code
+.vscode/
+
+# Docker
+*.tar
+*.tar.gz
+
+# MySQL backups
+*.sql
+
+# macOS
+.DS_Store

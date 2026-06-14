@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="manage-scholarships">
+  <div class="page-header">
+
+      <h1>Manage Scholarships</h1>
+
+      <a href="{% url 'scholarship_dashboard' %}" class="btn-secondary">
+          Back to Dashboard
+      </a>
+
+  </div>
+
+  <div class="search-box">
+    <form method="get">
+      <input type="text" name="q" placeholder="Search scholarships" 
+      value="{{ request.GET.q|default_if_none:'' }}">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+
+  <div class="table-card card">
+    <table class="scholarship-table">
+      <thead>
+        <tr>
+          <th>Scholarship</th>
+          <th>Details</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scholarship in scholarships %}
+        <tr>
+          <td>
+            <a class="scholarship-link" href="{% url 'view_scholarship' scholarship.scholarship_id %}">
+              {{ scholarship.scholarship_name }}
+            </a>
+          </td>
+          <td>
+            <div class="detail-pill">
+              <strong>Amount:</strong> ₹{{ scholarship.scholarship_amount }}
+            </div>
+            <div class="detail-pill">
+              <strong>Slots:</strong> {{ scholarship.no_of_scholarships }}
+            </div>
+          </td>
+          <td class="actions-cell">
+            <a href="{% url 'edit_scholarship' scholarship.scholarship_id %}" class="btn btn-secondary">Modify</a>
+            <form method="post" action="{% url 'delete_scholarship' scholarship.scholarship_id %}" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this scholarship?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="empty-row">No scholarships found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

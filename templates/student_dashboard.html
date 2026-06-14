@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+
+<div class="dashboard-container">
+
+    <!-- LEFT PANEL -->
+
+    <div class="left-panel">
+
+        <div class="card profile-card">
+
+            <img
+                src="{{ student.photo_url }}"
+                class="profile-photo"
+                alt="Student Photo"
+            >
+
+            <div class="student-name">
+                {{ student.name }}
+            </div>
+
+            <div class="student-program">
+                {{ student.program }}
+            </div>
+
+            <div class="student-info">
+
+                <div class="info-item">
+
+                    <span class="info-label">
+                        Roll No
+                    </span>
+
+                    <span class="info-value">
+                        {{ student.roll_no }}
+                    </span>
+
+                </div>
+
+                <div class="info-item">
+
+                    <span class="info-label">
+                        Category
+                    </span>
+
+                    <span class="info-value">
+                        {{ student.category }}
+                    </span>
+
+                </div>
+
+                <div class="info-item">
+
+                    <span class="info-label">
+                        Department
+                    </span>
+
+                    <span class="info-value">
+                        {{ student.department }}
+                    </span>
+
+                </div>
+
+            </div>
+
+            <button
+                type="button"
+                class="profile-btn"
+                onclick="showProfile()">
+
+                👤 View Full Profile
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- RIGHT PANEL -->
+
+    <div class="right-panel">
+
+        {% if student_scholarship %}
+
+            <div class="card">
+
+                <div class="card-title">
+
+                    Scholarship Status
+
+                </div>
+
+                <table class="data-table">
+
+                    <tr>
+                        <th>Scholarship</th>
+                        <td>
+                            {{ student_scholarship.scholarship.scholarship_name }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Status</th>
+                        <td>
+                            {{ student_scholarship.status }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Applied On</th>
+                        <td>
+                            {{ student_scholarship.application_date }}
+                        </td>
+                    </tr>
+
+                    {% if student_scholarship.award_year %}
+
+                    <tr>
+                        <th>Award Year</th>
+                        <td>
+                            {{ student_scholarship.award_year }}
+                        </td>
+                    </tr>
+
+                    {% endif %}
+
+                    {% if student_scholarship.remarks %}
+
+                    <tr>
+                        <th>Remarks</th>
+                        <td>
+                            {{ student_scholarship.remarks }}
+                        </td>
+                    </tr>
+
+                    {% endif %}
+
+                </table>
+
+                <div class="warning-box">
+
+                    {% if student_scholarship.status == 'APPLIED' %}
+
+                        Your scholarship application has been submitted and is awaiting review.
+
+                    {% elif student_scholarship.status == 'UNDER_REVIEW' %}
+
+                        Your scholarship application is currently under review.
+
+                    {% elif student_scholarship.status == 'APPROVED' %}
+
+                        Your scholarship application has been approved and is awaiting award processing.
+
+                    {% elif student_scholarship.status == 'AWARDED' %}
+
+                        As you are already holding a scholarship,
+                        no further scholarship may be awarded.
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        {% elif profile_completed %}
+
+            <div class="card">
+
+                <div class="card-title">
+
+                    Scholarship Profile Completed
+
+                </div>
+
+                <div class="success-box">
+
+                    Your scholarship profile has been completed successfully.
+
+                </div>
+
+                <div
+                    style="
+                        margin-top:20px;
+                        text-align:center;
+                    ">
+
+                    <a
+                        href="{% url 'eligible_scholarships' %}"
+                        class="btn-save">
+
+                        View Eligible Scholarships
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <div class="card">
+
+    <div class="card-title">
+        Complete Scholarship Profile
+    </div>
+
+        <form method="post" action="{% url 'student_profile_save' %}" enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label>Aadhaar Number</label>
+                    <input type="text" name="aadhaar_number" maxlength="12" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Latest Mobile Number</label>
+                    <input type="text" name="mobile_number" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bank Name</label>
+                    <input type="text" name="bank_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bank Branch</label>
+                    <input type="text" name="bank_branch" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bank Account Number</label>
+                    <input type="text" name="account_number" required>
+                </div>
+
+                <div class="form-group">
+                    <label>IFSC Code</label>
+                    <input type="text" name="ifsc_code" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Single Parent Child</label>
+
+                    <select name="single_parent_child" required>
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+                    <label>Household Income (₹)</label>
+                    <input type="number" name="annual_income" required>
+                </div>
+
+                <div class="form-group">
+                    <label>JEE Advance Rank</label>
+                    <input type="number" name="jee_advance_rank">
+                </div>
+
+                <div class="form-group">
+                    <label>JEE CRL Rank</label>
+                    <input type="number" name="jee_crl_rank">
+                </div>
+
+                <div class="form-group">
+                    <label>JEE Category Rank</label>
+                    <input type="number" name="jee_category_rank">
+                </div>
+
+            </div>
+
+            <hr style="margin:25px 0;">
+
+            <div class="card-title">
+                Upload Documents
+            </div>
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label>Bank Passbook (Identity Page)</label>
+                    <input type="file" name="bank_passbook_file" accept=".pdf,.jpg,.jpeg,.png" required>
+                </div>
+
+                <div class="form-group">
+                    <label>JEE Advance / JoSAA Certificate</label>
+                    <input type="file" name="jee_certificate_file" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+
+                <div class="form-group">
+                    <label>Category Certificate</label>
+                    <input type="file" name="category_certificate_file" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+
+                <div class="form-group">
+                    <label>Income Proof (PDF)</label>
+                    <input type="file" name="income_proof_file" accept=".pdf" required>
+                </div>
+
+            </div>
+
+            <div style="text-align:right; margin-top:30px;">
+
+                <button type="submit" class="btn-save">
+                    Save & Proceed
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+        {% endif %}
+    </div>        
+</div>
+
+
+<!-- PROFILE MODAL -->
+
+<div
+    id="profileModal"
+    class="modal">
+
+    <div class="modal-content">
+
+        <span
+            class="close-btn"
+            onclick="hideProfile()">
+
+            &times;
+
+        </span>
+
+        <h2>
+
+            Complete Student Profile
+
+        </h2>
+
+        <div class="modal-body">
+            <table class="data-table">
+
+                <tr>
+                    <th>Name</th>
+                    <td>{{ student.name }}</td>
+                </tr>
+
+            <tr>
+                <th>Roll Number</th>
+                <td>{{ student.roll_no }}</td>
+            </tr>
+
+            <tr>
+                <th>Email</th>
+                <td>{{ student.email }}</td>
+            </tr>
+
+            <tr>
+                <th>Gender</th>
+                <td>{{ student.gender }}</td>
+            </tr>
+
+            <tr>
+                <th>Category</th>
+                <td>{{ student.category }}</td>
+            </tr>
+
+            <tr>
+                <th>Program</th>
+                <td>{{ student.program }}</td>
+            </tr>
+
+            <tr>
+                <th>Department</th>
+                <td>{{ student.department }}</td>
+            </tr>
+
+            <tr>
+                <th>Admission Year</th>
+                <td>{{ student.admit_year }}</td>
+            </tr>
+
+            <tr>
+                <th>Current Batch</th>
+                <td>{{ student.batch }}</td>
+            </tr>
+
+            <tr>
+                <th>Date of Birth</th>
+                <td>{{ student.dob }}</td>
+            </tr>
+            {% if profile_completed %}
+
+                <tr>
+                    <th colspan="2"
+                        style="
+                            background:#f3f4f6;
+                            text-align:center;
+                        ">
+                        Scholarship Profile Information
+                    </th>
+                </tr>
+
+                <tr>
+                    <th>Aadhaar Number</th>
+                    <td>{{ profile.aadhaar_number }}</td>
+                </tr>
+
+                <tr>
+                    <th>Mobile Number</th>
+                    <td>{{ profile.mobile_number }}</td>
+                </tr>
+
+                <tr>
+                    <th>Bank Name</th>
+                    <td>{{ profile.bank_name }}</td>
+                </tr>
+
+                <tr>
+                    <th>Bank Branch</th>
+                    <td>{{ profile.bank_branch }}</td>
+                </tr>
+
+                <tr>
+                    <th>Account Number</th>
+                    <td>{{ profile.account_number }}</td>
+                </tr>
+
+                <tr>
+                    <th>IFSC Code</th>
+                    <td>{{ profile.ifsc_code }}</td>
+                </tr>
+
+                <tr>
+                    <th>Single Parent Child</th>
+                    <td>
+                        {% if profile.single_parent_child %}
+                            Yes
+                        {% else %}
+                            No
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Annual Income</th>
+                    <td>
+                        ₹ {{ profile.annual_income }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>JEE Advance Rank</th>
+                    <td>{{ profile.jee_advance_rank }}</td>
+                </tr>
+
+                <tr>
+                    <th>JEE CRL Rank</th>
+                    <td>{{ profile.jee_crl_rank }}</td>
+                </tr>
+
+                <tr>
+                    <th>JEE Category Rank</th>
+                    <td>{{ profile.jee_category_rank }}</td>
+                </tr>
+
+                {% endif %}
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function showProfile(){
+
+    document.getElementById(
+        "profileModal"
+    ).style.display = "block";
+}
+
+function hideProfile(){
+
+    document.getElementById(
+        "profileModal"
+    ).style.display = "none";
+}
+
+window.onclick = function(event){
+
+    let modal = document.getElementById(
+        "profileModal"
+    );
+
+    if(event.target == modal){
+
+        modal.style.display = "none";
+    }
+}
+
+</script>
+
+{% endblock %}
