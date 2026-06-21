@@ -95,6 +95,7 @@ def edit_scholarship(request, pk):
     return render(request, 'scholarship_create.html', {'criteria': criteria, 'scholarship': scholarship})
 
 def student_login(request):
+    print("************ student_login() called ************")
     return render(request, "student_login.html")
 
 def google_login(request):
@@ -200,9 +201,25 @@ def eligible_scholarships(request):
 def student_dashboard(request):
     email = request.session.get("email")
     print("Email =", email)
+    #rollno = "21071508"
+    #print("Roll No =", rollno)
     student = get_student_details(email)
-    print(type(student)); print(student)
+    print(type(student)); print("Student from API =", student)
     if not email: return redirect("student_login")
+    student = get_student_details(email)
+
+    print(type(student))
+    print("Student from API =", repr(student))
+
+    if not student or not student.strip():
+
+        messages.error(
+            request,
+            "Academic server returned an empty response."
+        )
+
+        return redirect("student_login")
+
     student = json.loads(student)
     student = {
         "roll_no": student.get("Roll No"),
@@ -388,9 +405,64 @@ def apply_scholarship(request, scholarship_id):
         is_active=True)
 
     StudentScholarship.objects.create(roll_no=roll_no, scholarship=scholarship,
-        status="APPLIED", award_year=timezone.now().year)
+        status="APPLIED")
 
     messages.success(request,
         "Your scholarship application has been submitted successfully.")
 
     return redirect("student_dashboard")
+
+
+
+
+def assign_scholarship(request):
+  student = None
+  scholarships = ScholarshipMaster.objects.filter(is_active=True).order_by("scholarship_name")
+  if request.method == "POST":
+    action = request.POST.get("action")
+    # FETCH STUDENT
+    if action == "fetch":
+      roll_no = request.POST.get("roll_no")
+      try:
+        student_json = get_student_details(roll_no)
+        student = json.loads(student_json)
+        student = {
+          "roll_no": student.get("Roll No"),
+          "name": student.get("Name"),
+          "gender": student.get("Gender"),
+          "category": student.get("Category"),
+          "dob": student.get("dob"),
+          "contact_no": student.get("contact_no"),
+          "email": student.get("email"),
+          "program": student.get("prg"),
+          "admit_year": student.get("admit_year"),
+          "pass_status": student.get("pass_status"),
+          "department": student.get("dept"),
+          "current_batch": student.get("Current Batch"),
+          "address": student.get("Address"),
+        }
+        print("Student Data =", student)
+      except Exception:
+        messages.error(request, "Student not found.")
+    # AWARD SCHOLARSHIP
+    elif action == "award":
+      roll_no = request.POST.get("roll_no")
+      scholarship = get_object_or_404(ScholarshipMaster, 
+        scholarship_id=request.POST.get("scholarship_id"))
+      obj, created = StudentScholarship.objects.get_or_create(
+        roll_no=roll_no, defaults={"scholarship": scholarship})
+      obj.scholarship = scholarship
+      obj.status = "AWARDED"
+      obj.award_year = timezone.now().year
+      obj.decision_date = timezone.now()
+      obj.save()
+      messages.success(request, 
+        f"{scholarship.scholarship_name} awarded successfully.")
+      return redirect("assign_scholarship")
+  return render(request, "assign_scholarship.html", {
+    "student": student,
+    "scholarships": scholarships,
+    "current_year": timezone.now().year,
+  })
+
+

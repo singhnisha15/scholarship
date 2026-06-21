@@ -10,29 +10,15 @@ PHOTO_KEY = "alksdjfl;jad*(^%%$%^**(!@@##ASDFASDF6876789191ahaga@@@#$%"
 
 def get_student_details(email):
 
-    email = email.replace(
-        "@iitbhu.ac.in",
-        "@itbhu.ac.in"
-    )
+    email = email.replace("@iitbhu.ac.in","@itbhu.ac.in")
     
-    date_string = datetime.datetime.now().strftime(
-        "%Y-%m-%d"
-    )
+    date_string = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    text = (
-        date_string +
-        DETAIL_KEY +
-        "-" +
-        email
-    )
+    text = (date_string + DETAIL_KEY +"-" +email)
 
-    sha1_hash = hashlib.sha1(
-        text.encode("utf-8")
-    ).hexdigest()
+    sha1_hash = hashlib.sha1(text.encode("utf-8")).hexdigest()
 
-    enc = hashlib.md5(
-        sha1_hash.encode("utf-8")
-    ).hexdigest()
+    enc = hashlib.md5(sha1_hash.encode("utf-8")).hexdigest()
 
     print("TEXT =", text)
     print("SHA1 =", sha1_hash)
@@ -40,18 +26,14 @@ def get_student_details(email):
     
     response = requests.post(
         "https://examination.iitbhu.ac.in/api/std_details_api.php",
-        data={
-            "email": email,
-            "enc": enc
-        },
-        timeout=20
-    )
+        data={"stdinfo": email,"enc": enc}, timeout=20)
 
     #return response.json()
     print("STATUS CODE =", response.status_code)
-
+    print("HEADERS:", response.headers)
     print("RESPONSE TEXT =")
-    print(response.text)
+    print(repr(response.text))
+
 
     return response.text
 
@@ -73,3 +55,4 @@ def get_photo_url(roll_no):
         f"?rollno={roll_no}"
         f"&enc={enc}"
     )
+

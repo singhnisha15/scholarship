@@ -225,43 +225,6 @@ class StudentScholarshipProfile(models.Model):
         db_table = "student_scholarship_profile"
 
 
-class StudentScholarships(models.Model):
-
-    STATUS_CHOICES = (
-        ('ACTIVE', 'ACTIVE'),
-        ('EXPIRED', 'EXPIRED'),
-        ('CANCELLED', 'CANCELLED'),
-    )
-
-    roll_no = models.CharField(
-        max_length=20
-    )
-
-    scholarship = models.ForeignKey(
-        ScholarshipMaster,
-        on_delete=models.CASCADE
-    )
-
-    award_year = models.IntegerField()
-
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='ACTIVE'
-    )
-
-    remarks = models.TextField(
-        blank=True,
-        null=True
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    class Meta:
-        db_table = "student_scholarships"
-
 
 class StudentScholarshipProfile(models.Model):
 

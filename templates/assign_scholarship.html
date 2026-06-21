@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-title">Assign Scholarship</div>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="fetch">
+        <div class="row">
+            <label>Roll Number</label>
+            <input type="text" name="roll_no" required>
+        </div>
+        <button type="submit" class="btn-save">Fetch Student</button>
+    </form>
+</div>
+
+
+{% if student %}
+
+<div class="card">
+    <div class="card-title">Student Details</div>
+    <div class="row">
+        <label>Name</label>
+        <div>{{ student.name }}</div>
+    </div>
+    <div class="row">
+        <label>Roll Number</label>
+        <div>{{ student.roll_no }}</div>
+    </div>
+    <div class="row">
+        <label>Programme</label>
+        <div>{{ student.program }}</div>
+    </div>
+    <div class="row">
+        <label>Department</label>
+        <div>{{ student.department }}</div>
+    </div>
+    <div class="row">
+        <label>Semester</label>
+        <div>{{ student.current_batch|default:"Not Available" }}</div>
+    </div>
+</div>
+
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="award">
+        <input type="hidden" name="roll_no" value="{{ studentroll_no }}">
+        <div class="row">
+            <label>Scholarship</label>
+            <select id="scholarship_id" name="scholarship_id" required onchange="updateConfirmation();">
+                <option value="">Select Scholarship</option>
+                {% for scholarship in scholarships %}
+                    <option value="{{ scholarship.scholarship_id }}">{{ scholarship.scholarship_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="confirmationCard" class="card" style="display:none; background:#fff8e1; border-left:5px solid #ff9800; margin-top:20px;">
+            <strong>Confirmation</strong>
+            <br><br>
+            This student <strong>{{ student.name }} ({{ student.roll_no }})</strong> is being assigned scholarship <strong><span id="selectedScholarship"></span></strong>.
+            <br><br>
+            Upon confirmation:
+            <ul>
+                <li>Status will be changed to <strong>AWARDED</strong></li>
+                <li>Award Year will be set to <strong>{{ current_year }}</strong></li>
+                <li>The student will become the awardee of this scholarship.</li>
+            </ul>
+        </div>
+        <button id="awardButton" type="submit" class="btn-save" style="display:none;">
+            Award Scholarship
+        </button>
+    </form>
+</div>
+
+{% endif %}
+
+<script>
+function updateConfirmation() {
+    const select = document.getElementById("scholarship_id");
+    const selectedText = select.options[select.selectedIndex].text;
+    if (select.value === "") {
+        document.getElementById("confirmationCard").style.display = "none";
+        document.getElementById("awardButton").style.display = "none";
+        return;
+    }
+    document.getElementById("selectedScholarship").innerText = selectedText;
+    document.getElementById("confirmationCard").style.display = "block";
+    document.getElementById("awardButton").style.display = "inline-block";
+}
+</script>
+
+{% endblock %}
