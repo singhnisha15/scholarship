@@ -17,16 +17,6 @@
 
   </div>
 
-
-
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert-success">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-
 <form method="post" action="{% if scholarship %}{% url 'edit_scholarship' scholarship.scholarship_id %}{% else %}{% url 'scholarship_create' %}{% endif %}">
 
     {% csrf_token %}

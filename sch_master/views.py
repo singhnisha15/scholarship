@@ -1,4 +1,4 @@
-import json
+import json, os, hashlib
 from datetime import datetime
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
@@ -94,9 +94,9 @@ def edit_scholarship(request, pk):
         return redirect('manage_scholarships')
     return render(request, 'scholarship_create.html', {'criteria': criteria, 'scholarship': scholarship})
 
-def student_login(request):
-    print("************ student_login() called ************")
-    return render(request, "student_login.html")
+def common_login(request):
+    print("************ common_login() called ************")
+    return render(request, "common_login.html")
 
 def google_login(request):
 
@@ -152,6 +152,17 @@ def student_profile_save(request):
     )
     return redirect("eligible_scholarships")
 
+def edit_student_profile(request):
+    student = request.session.get("student_data")
+    if not student: return redirect("common_login")
+    application = StudentScholarship.objects.filter(
+        roll_no=student["roll_no"]).exclude(status="REJECTED").first()
+    if application:
+        messages.error(request, "Profile cannot be edited after applying for a scholarship.")
+        return redirect("student_dashboard")
+    request.session["edit_profile"] = True
+    return redirect("student_dashboard")
+
 def is_scholarship_eligible(scholarship, student, profile):
     print("\n")
     print("=" * 80)
@@ -192,11 +203,22 @@ def is_scholarship_eligible(scholarship, student, profile):
 
 def eligible_scholarships(request):
     student = request.session.get("student_data")
-    if not student: return redirect("student_login")
+    if not student: return redirect("common_login")
     profile = StudentScholarshipProfile.objects.get(roll_no=student["roll_no"])
     scholarships = ScholarshipMaster.objects.filter(is_active=True)
     eligible = [sch for sch in scholarships if is_scholarship_eligible(sch, student, profile)]
     return render(request, "eligible_scholarships.html", {"student": student, "scholarships": eligible})
+
+def file_details(field):
+    if not field:
+        return None
+
+    ext = os.path.splitext(field.name)[1].lower()
+
+    return {
+        "filename": os.path.basename(field.name),
+        "is_image": ext in [".jpg", ".jpeg", ".png"],
+    }
 
 def student_dashboard(request):
     email = request.session.get("email")
@@ -205,46 +227,77 @@ def student_dashboard(request):
     #print("Roll No =", rollno)
     student = get_student_details(email)
     print(type(student)); print("Student from API =", student)
-    if not email: return redirect("student_login")
+    if not email: return redirect("common_login")
     student = get_student_details(email)
 
     print(type(student))
     print("Student from API =", repr(student))
 
-    if not student or not student.strip():
-
-        messages.error(
-            request,
-            "Academic server returned an empty response."
-        )
-
-        return redirect("student_login")
+    if not (student and student.strip()):
+        messages.error(request, "Academic server returned an empty response.")
+        return redirect("common_login")
 
     student = json.loads(student)
     student = {
-        "roll_no": student.get("Roll No"),
+        "roll_no": (student.get("Roll No") or "").strip(),
         "name": student.get("Name"),
         "gender": student.get("Gender"),
         "category": student.get("Category"),
         "program": student.get("prg"),
         "department": student.get("dept"),
         "batch": student.get("Current Batch"),
-        "email": student.get("email"),
+        "email": (student.get("email") or "").strip(),
         "contact_no": student.get("contact_no"),
         "admit_year": student.get("admit_year"),
         "dob": student.get("dob"),
     }
+
+    '''dt = timezone.now().strftime("%Y-%m-%d")
+    roll_no = student["roll_no"]
+    year_sem = student["batch"]      # temporary
+    text = roll_no + dt + year_sem
+    enc = hashlib.md5(hashlib.sha1(text.encode()).hexdigest().encode()).hexdigest()
+    print("####################")
+    print("Roll =", roll_no)
+    print("Year/Sem =", year_sem)
+    print("Date =", dt)
+    print("ENC =", enc)
+
+    url = f"https://academicservices.iitbhu.ac.in/studnt_acad/spi_cpi/{roll_no}/{year_sem}/{enc}/"
+    print(url)'''
+    
     print("student =", student); print("keys =", student.keys())
     student["photo_url"] = "/static/images/Nisha_photo.jpg"
     request.session["student_data"] = student
-    student_scholarship = StudentScholarship.objects.filter(roll_no=student["roll_no"]).exclude(status="REJECTED").first()
+    student_scholarships = StudentScholarship.objects.filter(roll_no=student["roll_no"]
+    ).order_by("-application_date")
     profile = StudentScholarshipProfile.objects.filter(roll_no=student["roll_no"]).first()
     profile_completed = profile.is_profile_complete if profile else False
-    return render(request, "student_dashboard.html", {"student": student, "student_scholarship": student_scholarship, "profile": profile, "profile_completed": profile_completed})
+    edit_mode = request.session.pop("edit_profile", False)
+    show_profile_form = (not profile_completed) or edit_mode
+    awarded_scholarship = student_scholarships.filter(status="AWARDED").first()
+    has_awarded = awarded_scholarship is not None
+    print("profile_completed =", profile_completed)
+    print("show_profile_form =", show_profile_form)
+    context = {
+        "bank_passbook": file_details(profile.bank_passbook_file) if profile else None,
+        "jee_certificate": file_details(profile.jee_certificate_file) if profile else None,
+        "category_certificate": file_details(profile.category_certificate_file) if profile else None,
+        "income_proof": file_details(profile.income_proof_file) if profile else None,
+    }
+    return render(request, "student_dashboard.html", 
+                  {"student": student, "student_scholarships": student_scholarships, 
+                   "profile": profile, "profile_completed": profile_completed, 
+                   "show_profile_form": show_profile_form, "has_awarded": has_awarded,
+                   "awarded_scholarship": awarded_scholarship, **context})
 
 def scholarship_detail(request, scholarship_id):
     scholarship = get_object_or_404(ScholarshipMaster, scholarship_id=scholarship_id)
-    return render(request, "scholarship_detail.html", {"scholarship": scholarship})
+    student = request.session.get("student_data")
+    already_applied = False
+    if student:
+        already_applied = StudentScholarship.objects.filter(roll_no=student["roll_no"],scholarship=scholarship).exists()
+    return render(request, "scholarship_detail.html", {"scholarship": scholarship, "already_applied": already_applied})
 
 def bulk_upload_scholarships(request):
     if request.method == "GET": return render(request, "bulk_upload_scholarships.html")
@@ -389,18 +442,22 @@ def apply_scholarship(request, scholarship_id):
 
     student = request.session.get("student_data")
     if not student:
-        return redirect("student_login")
+        return redirect("common_login")
 
     roll_no = student["roll_no"]
 
-    # Student has already applied for any scholarship
-    if StudentScholarship.objects.filter(roll_no=roll_no
-    ).exclude(status="REJECTED").exists():
-
+    # Student is already awarded scholarship
+    if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED"
+    ).exists():    
         messages.warning(request,
             "You have already applied for a scholarship. Multiple applications are not permitted.")
         return redirect("student_dashboard")
-
+    # Student has already applied for the same scholarship
+    if StudentScholarship.objects.filter(roll_no=roll_no, scholarship_id=scholarship_id,
+        status="APPLIED").exists():
+        messages.warning(request,
+            "You have already applied for this scholarship. Multiple applications are not permitted.")
+        return redirect("student_dashboard")
     scholarship = get_object_or_404(ScholarshipMaster, scholarship_id=scholarship_id,
         is_active=True)
 
@@ -417,12 +474,13 @@ def apply_scholarship(request, scholarship_id):
 
 def assign_scholarship(request):
   student = None
-  scholarships = ScholarshipMaster.objects.filter(is_active=True).order_by("scholarship_name")
+  student_applications = None  
+  
   if request.method == "POST":
     action = request.POST.get("action")
+    roll_no = request.POST.get("roll_no")  
     # FETCH STUDENT
-    if action == "fetch":
-      roll_no = request.POST.get("roll_no")
+    if action == "fetch":      
       try:
         student_json = get_student_details(roll_no)
         student = json.loads(student_json)
@@ -441,28 +499,45 @@ def assign_scholarship(request):
           "current_batch": student.get("Current Batch"),
           "address": student.get("Address"),
         }
+        print("FETCH ROLL =", roll_no)
+        print(
+            "APPLICATIONS =",
+            StudentScholarship.objects.filter(
+                roll_no=roll_no
+            ).count()
+        )
+        student_applications = StudentScholarship.objects.filter(roll_no=roll_no).select_related("scholarship")
         print("Student Data =", student)
       except Exception:
         messages.error(request, "Student not found.")
     # AWARD SCHOLARSHIP
     elif action == "award":
-      roll_no = request.POST.get("roll_no")
-      scholarship = get_object_or_404(ScholarshipMaster, 
-        scholarship_id=request.POST.get("scholarship_id"))
-      obj, created = StudentScholarship.objects.get_or_create(
-        roll_no=roll_no, defaults={"scholarship": scholarship})
-      obj.scholarship = scholarship
-      obj.status = "AWARDED"
-      obj.award_year = timezone.now().year
-      obj.decision_date = timezone.now()
-      obj.save()
-      messages.success(request, 
-        f"{scholarship.scholarship_name} awarded successfully.")
-      return redirect("assign_scholarship")
+        print("AWARD ROLL =", roll_no)
+        print("SCHOLARSHIP ID =", request.POST.get("scholarship_id"))
+        scholarship = get_object_or_404(ScholarshipMaster, scholarship_id=request.POST.get("scholarship_id"))
+        application = get_object_or_404(StudentScholarship, roll_no=roll_no, scholarship=scholarship)
+        if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exists():
+            messages.error(request, "This student has already been awarded a scholarship.")
+            return redirect("assign_scholarship")
+        application.status = "AWARDED"
+        application.award_year = timezone.now().year
+        application.decision_date = timezone.now()
+        application.save()
+        messages.success(request, f"{scholarship.scholarship_name} awarded successfully.")
+        return redirect("scholarship_dashboard")
   return render(request, "assign_scholarship.html", {
     "student": student,
-    "scholarships": scholarships,
+    "student_applications": student_applications,
     "current_year": timezone.now().year,
   })
 
 
+def remove_scholarship_application(request, application_id):
+    student = request.session.get("student_data")
+    application = get_object_or_404(StudentScholarship, id=application_id, roll_no=student["roll_no"])
+    if application.status == "AWARDED":
+        messages.error(request, "Awarded scholarships cannot be removed.")
+    else:
+        application.delete()
+        messages.success(request, "Scholarship application removed successfully.")
+    return redirect("student_dashboard")

@@ -21,17 +21,15 @@
 <body>
 
     {% if messages %}
-
+    <div class="alert-container">
         {% for message in messages %}
-
-            <div class="success-box">
-
-                {{ message }}
-
-            </div>
-
+        <div class="alert alert-{{ message.tags }}">
+            <span class="alert-icon">&#9888;</span>
+            <strong>{{ message.tags|capfirst }}:</strong>
+            <span class="alert-text">{{ message }}</span>
+        </div>
         {% endfor %}
-
+    </div>
     {% endif %}
 
 <div class="main-wrapper">
@@ -60,6 +58,18 @@
     </main>
 
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const important = document.querySelectorAll(".alert.alert-error, .alert.alert-warning, .alert.alert-danger");
+    if (important.length) {
+      const text = Array.from(important)
+        .map(el => el.textContent.trim())
+        .join("\n\n");
+      alert(text);
+    }
+  });
+</script>
 
 </body>
 </html>

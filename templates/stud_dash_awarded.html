@@ -1,0 +1,24 @@
+<div class="applied-scholarship-section">
+    <div class="card-title">Scholarship Awarded</div>
+    <div class="applied-scholarship-card compact-card" style="width:100%;">
+    <div class="applied-scholarship-header">
+        <a href="{% url 'scholarship_detail' awarded_scholarship.scholarship.scholarship_id %}" class="scholarship-title-link">
+        {{ awarded_scholarship.scholarship.scholarship_name }}
+        </a>
+    </div>
+    <div class="applied-scholarship-body">
+        <div class="sch-row"><strong class="sch-label">Status:</strong>
+        <span class="status-pill status-awarded">{{ awarded_scholarship.status }}</span>
+        </div>
+        <div class="sch-row"><strong class="sch-label">Date Applied:</strong>
+        {{ awarded_scholarship.application_date|date:"d M Y" }}</div>
+        <div class="sch-row"><strong class="sch-label">Award Year:</strong>
+        {{ awarded_scholarship.award_year }}</div>
+        {% if awarded_scholarship.remarks %}
+        <div class="sch-row"><strong class="sch-label">Remarks:</strong>{{ awarded_scholarship.remarks }}</div>
+        {% endif %}
+    </div>
+    </div>
+    <div class="success-box" style="margin-top:20px;">Congratulations! A scholarship has been awarded to you. No further scholarship applications are permitted.</div>
+</div>
+

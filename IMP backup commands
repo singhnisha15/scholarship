@@ -1,0 +1,22 @@
+GITHUB commands
+git status
+git add .
+git commit -m "Implemented profile editing"
+git push origin main
+
+Create new branch 
+git checkout -b renewal-module
+git add .
+git commit -m "Started renewal workflow"
+git push -u origin renewal-module
+
+Backup database
+docker exec scholarship-db-1 mysqldump -uroot -p scholarship_db > scholarship.sql
+
+Docker Images
+docker compose build
+docker image tag scholarship-web scholarship-ppt
+docker save scholarship-ppt -o scholarship-ppt.tar
+
+
+

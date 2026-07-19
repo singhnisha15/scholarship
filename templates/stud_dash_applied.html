@@ -1,0 +1,24 @@
+<div class="applied-scholarship-section">
+    <div class="card-title">Scholarships Applied</div>
+    <div class="applied-scholarship-grid compact" style="display:flex; flex-direction:column; gap:16px;">
+    {% for s in student_scholarships %}
+    <div class="applied-scholarship-card compact-card" style="width:100%;">
+        <div class="applied-scholarship-header">
+        <a href="{% url 'scholarship_detail' s.scholarship.scholarship_id %}" class="scholarship-title-link">
+            {{ s.scholarship.scholarship_name }}
+        </a>
+        </div>
+        <div class="applied-scholarship-body">
+        <div class="sch-row"><strong class="sch-label">Status:</strong>
+            <span class="status-pill status-applied">{{ s.status }}</span></div>
+        <div class="sch-row"><strong class="sch-label">Date Applied:</strong>{{ s.application_date|date:"d M Y" }}</div>
+        {% if s.remarks %}
+        <div class="sch-row"><strong class="sch-label">Remarks:</strong>{{ s.remarks }}</div>
+        {% endif %}
+        <div class="card-actions"><a href="{% url 'remove_scholarship_application' s.id %}" class="btn-remove" onclick="return confirm('Are you sure you want to withdraw this scholarship application?');">Remove</a></div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+    <div style="margin-top:20px; text-align:center;"><a href="{% url 'eligible_scholarships' %}" class="btn-save">View Eligible Scholarships</a></div>
+</div>

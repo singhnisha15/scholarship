@@ -1,0 +1,117 @@
+<form method="post" action="{% url 'student_profile_save' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Aadhaar Number</label>
+            <input type="text" name="aadhaar_number" maxlength="12" pattern="[0-9]{12}" inputmode="numeric" autocomplete="off" title="Enter 12 digit Aadhaar number" value="{{ profile.aadhaar_number|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Latest Mobile Number</label>
+            <input type="text" name="mobile_number" maxlength="10" pattern="[6-9][0-9]{9}" inputmode="numeric" title="Enter 10 digit mobile number" value="{{ profile.mobile_number|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Bank Name</label>
+            <input type="text" name="bank_name" value="{{ profile.bank_name|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Bank Branch</label>
+            <input type="text" name="bank_branch" value="{{ profile.bank_branch|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Bank Account Number</label>
+            <input type="text" name="account_number" pattern="[0-9]{9,18}" inputmode="numeric" title="Enter account number (9-18 digits)" value="{{ profile.account_number|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>IFSC Code</label>
+            <input type="text" name="ifsc_code" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" style="text-transform:uppercase" maxlength="11" maxlength="11" title="Enter valid 11 character IFSC (e.g. ABCD0XXXXX)" value="{{ profile.ifsc_code|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Single Parent Child</label>
+            <select name="single_parent_child" required>
+              <option value="">Select</option>
+              <option value="Yes" {% if profile.single_parent_child == 'Yes' %}selected{% endif %}>Yes</option>
+              <option value="No" {% if profile.single_parent_child == 'No' %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Household Income (₹)</label>
+            <input type="number" name="annual_income" min="0" step="1" max="100000000" value="{{ profile.annual_income|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>JEE Advance Rank</label>
+            <input type="number" name="jee_advance_rank" min="1" max="3000000" value="{{ profile.jee_advance_rank|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>JEE CRL Rank</label>
+            <input type="number" name="jee_crl_rank" min="1" max="3000000" value="{{ profile.jee_crl_rank|default:'' }}" required>
+          </div>
+          <div class="form-group">
+            <label>JEE Category Rank</label>
+            <input type="number" name="jee_category_rank" min="1" max="3000000" value="{{ profile.jee_category_rank|default:'' }}" required>
+          </div>
+        </div>
+    <hr style="margin:25px 0;">
+    <div class="card-title">Upload Documents</div>
+    <div class="form-grid">
+
+        <!-- Bank Passbook -->
+        <div class="form-group">
+            <label>Bank Passbook (Identity Page)</label>
+            <input type="file" name="bank_passbook_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.bank_passbook_file %}required{% endif %}>
+            {% if profile.bank_passbook_file %}
+            <div class="existing-file"><span>Existing file:</span> <a href="{{ profile.bank_passbook_file.url }}" target="_blank">{{ bank_passbook.filename }}</a>
+                {% if bank_passbook.is_image %}
+                <div><img src="{{ profile.bank_passbook_file.url }}" style="max-width:150px;max-height:150px;margin-top:8px;"></div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- JEE Certificate -->
+        <div class="form-group">
+            <label>JEE Advance / JoSAA Certificate</label>
+            <input type="file" name="jee_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.jee_certificate_file %}required{% endif %}>
+            {% if profile.jee_certificate_file %}
+            <div class="existing-file">
+                <span>Existing file:</span>
+                <a href="{{ profile.jee_certificate_file.url }}" target="_blank">{{ jee_certificate.filename }}</a>
+                {% if jee_certificate.is_image %}
+                <div><img src="{{ profile.jee_certificate_file.url }}" style="max-width:150px;max-height:150px;margin-top:8px;"></div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Category Certificate -->
+        <div class="form-group">
+            <label>Category Certificate</label>
+            <input type="file" name="category_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.category_certificate_file %}required{% endif %}>
+            {% if profile.category_certificate_file %}
+            <div class="existing-file">
+                <span>Existing file:</span>
+                <a href="{{ profile.category_certificate_file.url }}" target="_blank">{{ category_certificate.filename }}</a>
+                {% if category_certificate.is_image %}
+                <div><img src="{{ profile.category_certificate_file.url }}" style="max-width:150px;max-height:150px;margin-top:8px;"></div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Income Proof -->
+        <div class="form-group">
+            <label>Income Proof (PDF)</label>
+            <input type="file" name="income_proof_file" accept=".pdf" {% if not profile.income_proof_file %}required{% endif %}>
+            {% if profile.income_proof_file %}
+            <div class="existing-file">
+                <span>Existing file:</span>
+                <a href="{{ profile.income_proof_file.url }}" target="_blank">{{ income_proof.filename }}</a>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+        <div style="text-align:right; margin-top:30px;">
+          <button type="submit" class="btn-save">Save & Proceed</button>
+        </div>
+      </form>

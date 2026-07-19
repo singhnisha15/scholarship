@@ -2,78 +2,34 @@
 
 {% block content %}
 
- <a href="{% url 'student_dashboard' %}" class="btn-secondary">
-          Back to Dashboard
-      </a>
-      
+<a href="{% url 'student_dashboard' %}" class="btn-secondary">Back to Dashboard</a>
+
 <div class="card">
+    <div class="card-title">{{ scholarship.scholarship_name }}</div>
 
-    <div class="card-title">
-
-        {{ scholarship.scholarship_name }}
-
+    <div class="row">
+        <label>Scholarship Amount</label>
+        <div>{{ scholarship.scholarship_amount }}</div>
     </div>
 
     <div class="row">
-
-        <label>
-            Scholarship Amount
-        </label>
-
-        <div>
-            {{ scholarship.scholarship_amount }}
-        </div>
-
+        <label>Number of Scholarships</label>
+        <div>{{ scholarship.no_of_scholarships }}</div>
     </div>
-
-    <div class="row">
-
-        <label>
-            Number of Scholarships
-        </label>
-
-        <div>
-            {{ scholarship.no_of_scholarships }}
-        </div>
-
-    </div>
-
 </div>
-
 
 <div class="card">
-
-    <div class="card-title">
-
-        Scholarship Details
-
-    </div>
-
-    <div style="white-space:pre-wrap; line-height:1.7;">
-
-        {{ scholarship.description }}
-
-    </div>
-
+    <div class="card-title">Scholarship Details</div>
+    <div style="white-space:pre-wrap; line-height:1.7;">{{ scholarship.description }}</div>
 </div>
 
-
-<div class="card">
-
-<form method="post"
-      action="{% url 'apply_scholarship' scholarship.scholarship_id %}"
-      onsubmit="return confirm(
-'Are you sure you want to apply for this scholarship?\n\nOnce you submit your application, you will NOT be able to apply for any other scholarship. This action cannot be undone.'
-      );">
-
-    {% csrf_token %}
-
-    <button type="submit" class="btn-save">
-        Apply Scholarship
-    </button>
-
-</form>
-
-</div>
+{% if not already_applied %}
+    <div class="card">
+        <form method="post" action="{% url 'apply_scholarship' scholarship.scholarship_id %}" onsubmit="return confirm('Are you sure you want to apply for this scholarship?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-save">Apply for Scholarship</button>
+        </form>
+    </div>
+{% endif %}
 
 {% endblock %}
