@@ -82,6 +82,9 @@
         <tr><th>JEE Advance Rank</th><td>{{ profile.jee_advance_rank }}</td></tr>
         <tr><th>JEE CRL Rank</th><td>{{ profile.jee_crl_rank }}</td></tr>
         <tr><th>JEE Category Rank</th><td>{{ profile.jee_category_rank }}</td></tr>
+        <tr><th>SPI</th><td>{{ student.spi }}</td></tr>
+        <tr><th>CPI</th><td>{{ student.cpi }}</td></tr>
+        <tr><th>Credits Completed</th><td>{{ student.credits_earned|floatformat:"0" }}%</td></tr>
         {% endif %}
       </table>
       <div class="modal-actions">

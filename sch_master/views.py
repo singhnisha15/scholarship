@@ -3,7 +3,7 @@ from datetime import datetime
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .services.academic_api import get_student_details, get_photo_url
+from .services.academic_api import get_student_details, get_photo_url, get_spi_cpi
 import pandas as pd
 from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship
 from django.utils import timezone
@@ -100,7 +100,7 @@ def common_login(request):
 
 def google_login(request):
 
-    email = "nishasingh.rs.cse21@itbhu.ac.in"      #nishasingh.rs.cse21@itbhu.ac.in Change to request.user.email in production or nishasingh.rs.cse21@itbhu.ac.in
+    email = "nishasingh.rs.cse21@itbhu.ac.in"      #nishasingh.rs.cse21@itbhu.ac.in Change to request.user.email in production or yuvrajk.choudhary.min25@itbhu.ac.in
     request.session["email"] = email
 
     office_users = [
@@ -199,7 +199,26 @@ def is_scholarship_eligible(scholarship, student, profile):
             age_limit = int(float(value))
             print(f"Age => Student={age} Limit={value}")
             if age >= age_limit: return False
+        elif name == "SPI":
+            required_spi = float(value)
+            print(f"SPI => Student={student['spi']} Required={required_spi}")
+            if student["spi"] < required_spi: return False
+        elif name == "CPI":
+            required_cpi = float(value)
+            print(f"CPI => Student={student['cpi']} Required={required_cpi}")
+            if student["cpi"] < required_cpi: return False
+        elif name == "Credits Complete":
+            required = value == "Yes"
+            has_completed_credits = student["credits_earned"] >= 100
+            print(f"Credits Complete => Student={has_completed_credits} Required={required}")
+            if has_completed_credits != required: return False
+        elif name == "Pass Status":
+            required = value == "Yes"
+            student_pass_status = student.get("pass_status") == "Yes"
+            print(f"Pass Status => Student={student_pass_status} Required={required}")
+            if student_pass_status != required: return False
     return True
+            
 
 def eligible_scholarships(request):
     student = request.session.get("student_data")
@@ -238,6 +257,19 @@ def student_dashboard(request):
         return redirect("common_login")
 
     student = json.loads(student)
+
+    try:            #SPI CPI from academic server
+        spi_data = get_spi_cpi(student.get("Roll No"), "2026-27-1")
+    except Exception as e:
+        print("SPI/CPI API Error:", e)
+        spi_data = {}
+
+    def parse_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
     student = {
         "roll_no": (student.get("Roll No") or "").strip(),
         "name": student.get("Name"),
@@ -250,21 +282,12 @@ def student_dashboard(request):
         "contact_no": student.get("contact_no"),
         "admit_year": student.get("admit_year"),
         "dob": student.get("dob"),
+        "spi": parse_float(spi_data.get("spi")),
+        "cpi": parse_float(spi_data.get("cpi")),
+        "credits_earned": parse_float(spi_data.get("percent_credits_earned")),
     }
 
-    '''dt = timezone.now().strftime("%Y-%m-%d")
-    roll_no = student["roll_no"]
-    year_sem = student["batch"]      # temporary
-    text = roll_no + dt + year_sem
-    enc = hashlib.md5(hashlib.sha1(text.encode()).hexdigest().encode()).hexdigest()
-    print("####################")
-    print("Roll =", roll_no)
-    print("Year/Sem =", year_sem)
-    print("Date =", dt)
-    print("ENC =", enc)
-
-    url = f"https://academicservices.iitbhu.ac.in/studnt_acad/spi_cpi/{roll_no}/{year_sem}/{enc}/"
-    print(url)'''
+    
     
     print("student =", student); print("keys =", student.keys())
     student["photo_url"] = "/static/images/Nisha_photo.jpg"
