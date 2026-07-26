@@ -1,4 +1,4 @@
-<form method="post" action="{% url 'student_profile_save' %}" enctype="multipart/form-data">
+<form method="post" action="{% url 'student_profile_submit' %}" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="form-grid">
           <div class="form-group">
@@ -29,8 +29,8 @@
             <label>Single Parent Child</label>
             <select name="single_parent_child" required>
               <option value="">Select</option>
-              <option value="Yes" {% if profile.single_parent_child == 'Yes' %}selected{% endif %}>Yes</option>
-              <option value="No" {% if profile.single_parent_child == 'No' %}selected{% endif %}>No</option>
+              <option value="Yes" {% if profile.single_parent_child %}selected{% endif %}>Yes</option>
+              <option value="No" {% if not profile.single_parent_child %}selected{% endif %}>No</option>
             </select>
           </div>
           <div class="form-group">
@@ -52,6 +52,12 @@
         </div>
     <hr style="margin:25px 0;">
     <div class="card-title">Upload Documents</div>
+    <div class="form-group" style="grid-column: 1 / -1; background:#fff8e1; padding:14px; border:1px solid #f2c94c; border-radius:8px; margin-bottom:16px;">
+        <label style="display:flex; gap:10px; align-items:flex-start; margin:0; font-weight:600;">
+            <input type="checkbox" name="no_disciplinary_action" {% if profile.no_disciplinary_action %}checked{% endif %} required>
+            <span>I hereby declare that no disciplinary action has been taken against me and that the information submitted is true. If any information is found to be invalid, disciplinary action may be taken against me.</span>
+        </label>
+    </div>
     <div class="form-grid">
 
         <!-- Bank Passbook -->
@@ -105,6 +111,30 @@
             <div class="existing-file">
                 <span>Existing file:</span>
                 <a href="{{ profile.income_proof_file.url }}" target="_blank">{{ income_proof.filename }}</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Fee Receipt -->
+        <div class="form-group">
+            <label>Fee Receipt</label>
+            <input type="file" name="fee_receipt_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.fee_receipt_file %}required{% endif %}>
+            {% if profile.fee_receipt_file %}
+            <div class="existing-file">
+                <span>Existing file:</span>
+                <a href="{{ profile.fee_receipt_file.url }}" target="_blank">{{ fee_receipt.filename }}</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Domicile Certificate -->
+        <div class="form-group">
+            <label>Domicile Certificate</label>
+            <input type="file" name="domicile_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.domicile_certificate_file %}required{% endif %}>
+            {% if profile.domicile_certificate_file %}
+            <div class="existing-file">
+                <span>Existing file:</span>
+                <a href="{{ profile.domicile_certificate_file.url }}" target="_blank">{{ domicile_certificate.filename }}</a>
             </div>
             {% endif %}
         </div>

@@ -12,6 +12,7 @@ urlpatterns = [
     path("scholarship/login/", views.common_login, name="common_login"),
     path("scholarship/bulk-upload/", views.bulk_upload_scholarships, name="bulk_upload_scholarships"),
     path("student/profile/", views.student_profile, name="student_profile"),
+    path("student/profile/submit/", views.student_profile_save, name="student_profile_submit"),
     path("student/profile/save/", views.student_profile_save, name="student_profile_save"),
     path("student/eligible-scholarships/", views.eligible_scholarships, name="eligible_scholarships"),
     path(

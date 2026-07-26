@@ -126,30 +126,51 @@ def student_profile(request):
     return render(request, "student_profile.html", {"student": student_data, "profile": profile})
 
 def student_profile_save(request):
-    if request.method != "POST": return redirect("student_dashboard")
-    student_data = request.session["student_data"]
+    if request.method != "POST":
+        return redirect("student_dashboard")
+
+    student_data = request.session.get("student_data")
+    if not student_data:
+        return redirect("common_login")
+
+    declaration_confirmed = request.POST.get("no_disciplinary_action") == "on"
+    if not declaration_confirmed:
+        messages.error(
+            request,
+            "You must confirm that no disciplinary action has been taken against you. If any information provided is found to be invalid, disciplinary action may be taken.",
+        )
+        return redirect("student_dashboard")
+
+    profile = StudentScholarshipProfile.objects.filter(roll_no=student_data["roll_no"]).first()
+
+    defaults = {
+        "institute_email": student_data["email"],
+        "aadhaar_number": request.POST.get("aadhaar_number"),
+        "bank_name": request.POST.get("bank_name"),
+        "bank_branch": request.POST.get("bank_branch"),
+        "account_number": request.POST.get("account_number"),
+        "ifsc_code": request.POST.get("ifsc_code"),
+        "mobile_number": request.POST.get("mobile_number"),
+        "single_parent_child": request.POST.get("single_parent_child") == "Yes",
+        "jee_advance_rank": request.POST.get("jee_advance_rank"),
+        "jee_crl_rank": request.POST.get("jee_crl_rank"),
+        "jee_category_rank": request.POST.get("jee_category_rank"),
+        "annual_income": request.POST.get("annual_income"),
+        "bank_passbook_file": request.FILES.get("bank_passbook_file") or (profile.bank_passbook_file if profile else None),
+        "jee_certificate_file": request.FILES.get("jee_certificate_file") or (profile.jee_certificate_file if profile else None),
+        "category_certificate_file": request.FILES.get("category_certificate_file") or (profile.category_certificate_file if profile else None),
+        "income_proof_file": request.FILES.get("income_proof_file") or (profile.income_proof_file if profile else None),
+        "fee_receipt_file": request.FILES.get("fee_receipt_file") or (profile.fee_receipt_file if profile else None),
+        "domicile_certificate_file": request.FILES.get("domicile_certificate_file") or (profile.domicile_certificate_file if profile else None),
+        "no_disciplinary_action": True,
+        "is_profile_complete": True,
+    }
+
     StudentScholarshipProfile.objects.update_or_create(
         roll_no=student_data["roll_no"],
-        defaults={
-            "institute_email": student_data["email"],
-            "aadhaar_number": request.POST.get("aadhaar_number"),
-            "bank_name": request.POST.get("bank_name"),
-            "bank_branch": request.POST.get("bank_branch"),
-            "account_number": request.POST.get("account_number"),
-            "ifsc_code": request.POST.get("ifsc_code"),
-            "mobile_number": request.POST.get("mobile_number"),
-            "single_parent_child": request.POST.get("single_parent_child") == "Yes",
-            "jee_advance_rank": request.POST.get("jee_advance_rank"),
-            "jee_crl_rank": request.POST.get("jee_crl_rank"),
-            "jee_category_rank": request.POST.get("jee_category_rank"),
-            "annual_income": request.POST.get("annual_income"),
-            "bank_passbook_file": request.FILES.get("bank_passbook_file"),
-            "jee_certificate_file": request.FILES.get("jee_certificate_file"),
-            "category_certificate_file": request.FILES.get("category_certificate_file"),
-            "income_proof_file": request.FILES.get("income_proof_file"),
-            "is_profile_complete": True,
-        },
+        defaults=defaults,
     )
+    messages.success(request, "Profile saved successfully.")
     return redirect("eligible_scholarships")
 
 def edit_student_profile(request):
@@ -163,6 +184,34 @@ def edit_student_profile(request):
     request.session["edit_profile"] = True
     return redirect("student_dashboard")
 
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    return text in {"yes", "y", "true", "1", "pass", "passed", "passed with grace", "promoted", "clear"}
+
+
+def _resolve_student_value(student, *keys, default=None):
+    for key in keys:
+        value = student.get(key)
+        if value not in (None, "", []):
+            return value
+    return default
+
+
+def _student_has_failed_grade(student):
+    pass_status = str(student.get("pass_status", "")).strip().lower()
+    if pass_status in {"yes", "y", "true", "1", "pass", "passed", "passed with grace", "promoted", "clear"}:
+        return False
+    if pass_status in {"no", "n", "false", "0", "fail", "failed", "not passed", "not pass", "backlog"}:
+        return True
+    return False
+
+
 def is_scholarship_eligible(scholarship, student, profile):
     print("\n")
     print("=" * 80)
@@ -170,7 +219,7 @@ def is_scholarship_eligible(scholarship, student, profile):
     print(f"Student : {student['name']}")
     print("=" * 80)
     for criterion in scholarship.criteria.all():
-        name = criterion.criteria.criteria_name
+        name = CriteriaMaster.normalize_criteria_name(criterion.criteria.criteria_name)
         print(f"Evaluating Criterion: {name}")
         value = criterion.criteria_value
         if name == "Gender":
@@ -212,11 +261,16 @@ def is_scholarship_eligible(scholarship, student, profile):
             has_completed_credits = student["credits_earned"] >= 100
             print(f"Credits Complete => Student={has_completed_credits} Required={required}")
             if has_completed_credits != required: return False
-        elif name == "Pass Status":
+        elif name in {"Has Failed Grade", "Pass Status"}:
             required = value == "Yes"
-            student_pass_status = student.get("pass_status") == "Yes"
-            print(f"Pass Status => Student={student_pass_status} Required={required}")
-            if student_pass_status != required: return False
+            student_has_failed_grade = _student_has_failed_grade(student)
+            print(f"Has Failed Grade => Student={student_has_failed_grade} Required={required}")
+            if student_has_failed_grade != required: return False
+        elif name == "Disciplinary Action":
+            required = value == "Yes"
+            student_has_disciplinary_action = not getattr(profile, "no_disciplinary_action", False)
+            print(f"Disciplinary Action => Student={student_has_disciplinary_action} Required={required}")
+            if student_has_disciplinary_action != required: return False
     return True
             
 
@@ -285,6 +339,7 @@ def student_dashboard(request):
         "spi": parse_float(spi_data.get("spi")),
         "cpi": parse_float(spi_data.get("cpi")),
         "credits_earned": parse_float(spi_data.get("percent_credits_earned")),
+        "pass_status": student.get("pass_status"),
     }
 
     
@@ -307,6 +362,8 @@ def student_dashboard(request):
         "jee_certificate": file_details(profile.jee_certificate_file) if profile else None,
         "category_certificate": file_details(profile.category_certificate_file) if profile else None,
         "income_proof": file_details(profile.income_proof_file) if profile else None,
+        "fee_receipt": file_details(profile.fee_receipt_file) if profile else None,
+        "domicile_certificate": file_details(profile.domicile_certificate_file) if profile else None,
     }
     return render(request, "student_dashboard.html", 
                   {"student": student, "student_scholarships": student_scholarships, 
@@ -326,7 +383,7 @@ def bulk_upload_scholarships(request):
     if request.method == "GET": return render(request, "bulk_upload_scholarships.html")
     file = request.FILES["file"]
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
-    criteria_lookup = {c.criteria_name: c for c in CriteriaMaster.objects.all()}
+    criteria_lookup = {CriteriaMaster.normalize_criteria_name(c.criteria_name): c for c in CriteriaMaster.objects.all()}
     uploaded = 0
     mapping = {
         "Gender (=) ": "Gender",
@@ -337,11 +394,11 @@ def bulk_upload_scholarships(request):
         "SPI (>)": "SPI",
         "Income (<)": "Income",
         "Category (=)": "Category",
-        "Grade (Not in)": "Failed Grade",
+        "Grade (Not in)": "Has Failed Grade",
         "Age (<)": "Age",
         "Credits Complete (Yes/No)": "Credits Complete",
         "Single Parent (Yes/No)": "Single Parent",
-        "Diciplinary Action (Yes/No)": "Disciplinary Action",
+        "Disciplinary Action (Yes/No)": "Disciplinary Action",
     }
     SEMESTER_MAP = {
         "Sem-I": "Semester-I", "Sem-II": "Semester-II", "Sem-III": "Semester-III",
@@ -388,7 +445,7 @@ def bulk_upload_scholarships(request):
         for excel_column, criteria_name in mapping.items():
             value = row.get(excel_column)
             if pd.isna(value): continue
-            criteria = criteria_lookup.get(criteria_name)
+            criteria = criteria_lookup.get(CriteriaMaster.normalize_criteria_name(criteria_name))
             if not criteria: continue
             criteria_value = str(value).strip()
             if criteria.allowed_operator in ["IN", "NOT_IN"]:
