@@ -3,6 +3,7 @@ from datetime import datetime
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.http import FileResponse, Http404
 from .services.academic_api import get_student_details, get_photo_url, get_spi_cpi
 import pandas as pd
 from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship
@@ -100,7 +101,7 @@ def common_login(request):
 
 def google_login(request):
 
-    email = "nishasingh.rs.cse21@itbhu.ac.in"      #nishasingh.rs.cse21@itbhu.ac.in Change to request.user.email in production or yuvrajk.choudhary.min25@itbhu.ac.in
+    email = "nisha.cis@itbhu.ac.in"      #nishasingh.rs.cse21@itbhu.ac.in Change to request.user.email in production or yuvrajk.choudhary.min25@itbhu.ac.in
     request.session["email"] = email
 
     office_users = [
@@ -116,73 +117,171 @@ def google_login(request):
 
 def student_profile(request):
     student_data = request.session.get("student_data")
+    if not student_data:
+        return redirect("common_login")
+
+    edit_mode = request.session.pop("edit_profile", False)
     roll_no = student_data["roll_no"]
     existing_award = StudentScholarship.objects.filter(roll_no=roll_no, status='ACTIVE')
     if existing_award.exists():
         return render(request, "already_awarded.html", {"awards": existing_award, "student": student_data})
+
     profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    if profile and profile.is_profile_complete:
+    if profile and profile.is_profile_complete and not edit_mode:
         return redirect("eligible_scholarships")
-    return render(request, "student_profile.html", {"student": student_data, "profile": profile})
 
-def student_profile_save(request):
-    if request.method != "POST":
-        return redirect("student_dashboard")
+    if request.method == "POST":
+        request.session["student_profile_data"] = {
+            "institute_email": student_data["email"],
+            "aadhaar_number": request.POST.get("aadhaar_number"),
+            "bank_name": request.POST.get("bank_name"),
+            "bank_branch": request.POST.get("bank_branch"),
+            "account_number": request.POST.get("account_number"),
+            "ifsc_code": request.POST.get("ifsc_code"),
+            "mobile_number": request.POST.get("mobile_number"),
+            "single_parent_child": request.POST.get("single_parent_child") == "Yes",
+            "jee_crl_rank": request.POST.get("jee_crl_rank"),
+            "jee_category_rank": request.POST.get("jee_category_rank"),
+            "annual_income": request.POST.get("annual_income"),
+            "class_12_percentage": request.POST.get("class_12_percentage"),
+        }
+        return redirect("student_profile_documents")
 
+    profile_data = request.session.get("student_profile_data")
+    if not profile_data and profile:
+        profile_data = {
+            "aadhaar_number": profile.aadhaar_number,
+            "bank_name": profile.bank_name,
+            "bank_branch": profile.bank_branch,
+            "account_number": profile.account_number,
+            "ifsc_code": profile.ifsc_code,
+            "mobile_number": profile.mobile_number,
+            "single_parent_child": profile.single_parent_child,
+            "jee_crl_rank": profile.jee_crl_rank,
+            "jee_category_rank": profile.jee_category_rank,
+            "annual_income": profile.annual_income,
+            "class_12_percentage": profile.class_12_percentage,
+        }
+
+    return render(request, "student_profile_details.html", {
+        "student": student_data,
+        "profile": profile,
+        "profile_data": profile_data,
+        "edit_mode": edit_mode,
+    })
+
+
+def student_profile_documents(request):
     student_data = request.session.get("student_data")
     if not student_data:
         return redirect("common_login")
 
-    declaration_confirmed = request.POST.get("no_disciplinary_action") == "on"
-    if not declaration_confirmed:
-        messages.error(
-            request,
-            "You must confirm that no disciplinary action has been taken against you. If any information provided is found to be invalid, disciplinary action may be taken.",
+    roll_no = student_data["roll_no"]
+    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
+    profile_data = request.session.get("student_profile_data")
+    if not profile_data and profile:
+        profile_data = {
+            "institute_email": profile.institute_email,
+            "aadhaar_number": profile.aadhaar_number,
+            "bank_name": profile.bank_name,
+            "bank_branch": profile.bank_branch,
+            "account_number": profile.account_number,
+            "ifsc_code": profile.ifsc_code,
+            "mobile_number": profile.mobile_number,
+            "single_parent_child": profile.single_parent_child,
+            "jee_crl_rank": profile.jee_crl_rank,
+            "jee_category_rank": profile.jee_category_rank,
+            "annual_income": profile.annual_income,
+            "class_12_percentage": profile.class_12_percentage,
+        }
+
+    if not profile_data:
+        return redirect("student_profile")
+
+    if request.method == "POST":
+        defaults = {
+            **profile_data,
+            "bank_passbook_file": request.FILES.get("bank_passbook_file") or (profile.bank_passbook_file if profile else None),
+            "jee_certificate_file": request.FILES.get("jee_certificate_file") or (profile.jee_certificate_file if profile else None),
+            "category_certificate_file": request.FILES.get("category_certificate_file") or (profile.category_certificate_file if profile else None),
+            "income_proof_file": request.FILES.get("income_proof_file") or (profile.income_proof_file if profile else None),
+            "class_12_marksheet_file": request.FILES.get("class_12_marksheet_file") or (profile.class_12_marksheet_file if profile else None),
+            "fee_receipt_odd_semester_file": request.FILES.get("fee_receipt_odd_semester_file") or (profile.fee_receipt_odd_semester_file if profile else None),
+            "fee_receipt_even_semester_file": request.FILES.get("fee_receipt_even_semester_file") or (profile.fee_receipt_even_semester_file if profile else None),
+            "domicile_certificate_file": request.FILES.get("domicile_certificate_file") or (profile.domicile_certificate_file if profile else None),
+            "no_disciplinary_action": False,
+            "is_profile_complete": False,
+        }
+        StudentScholarshipProfile.objects.update_or_create(
+            roll_no=roll_no,
+            defaults=defaults,
         )
-        return redirect("student_dashboard")
+        return redirect("student_profile_save")
 
-    profile = StudentScholarshipProfile.objects.filter(roll_no=student_data["roll_no"]).first()
+    return render(request, "student_profile_documents.html", {
+        "student": student_data,
+        "profile": profile,
+        "profile_data": profile_data,
+        "bank_passbook": file_details(profile.bank_passbook_file) if profile else None,
+        "jee_certificate": file_details(profile.jee_certificate_file) if profile else None,
+        "category_certificate": file_details(profile.category_certificate_file) if profile else None,
+        "income_proof": file_details(profile.income_proof_file) if profile else None,
+        "class_12_marksheet": file_details(profile.class_12_marksheet_file) if profile else None,
+        "fee_receipt_odd_semester": file_details(profile.fee_receipt_odd_semester_file) if profile else None,
+        "fee_receipt_even_semester": file_details(profile.fee_receipt_even_semester_file) if profile else None,
+        "domicile_certificate": file_details(profile.domicile_certificate_file) if profile else None,
+    })
 
-    defaults = {
-        "institute_email": student_data["email"],
-        "aadhaar_number": request.POST.get("aadhaar_number"),
-        "bank_name": request.POST.get("bank_name"),
-        "bank_branch": request.POST.get("bank_branch"),
-        "account_number": request.POST.get("account_number"),
-        "ifsc_code": request.POST.get("ifsc_code"),
-        "mobile_number": request.POST.get("mobile_number"),
-        "single_parent_child": request.POST.get("single_parent_child") == "Yes",
-        "jee_advance_rank": request.POST.get("jee_advance_rank"),
-        "jee_crl_rank": request.POST.get("jee_crl_rank"),
-        "jee_category_rank": request.POST.get("jee_category_rank"),
-        "annual_income": request.POST.get("annual_income"),
-        "bank_passbook_file": request.FILES.get("bank_passbook_file") or (profile.bank_passbook_file if profile else None),
-        "jee_certificate_file": request.FILES.get("jee_certificate_file") or (profile.jee_certificate_file if profile else None),
-        "category_certificate_file": request.FILES.get("category_certificate_file") or (profile.category_certificate_file if profile else None),
-        "income_proof_file": request.FILES.get("income_proof_file") or (profile.income_proof_file if profile else None),
-        "fee_receipt_file": request.FILES.get("fee_receipt_file") or (profile.fee_receipt_file if profile else None),
-        "domicile_certificate_file": request.FILES.get("domicile_certificate_file") or (profile.domicile_certificate_file if profile else None),
-        "no_disciplinary_action": True,
-        "is_profile_complete": True,
-    }
 
-    StudentScholarshipProfile.objects.update_or_create(
-        roll_no=student_data["roll_no"],
-        defaults=defaults,
-    )
-    messages.success(request, "Profile saved successfully.")
-    return redirect("eligible_scholarships")
+def student_profile_save(request):
+    student_data = request.session.get("student_data")
+    if not student_data:
+        return redirect("common_login")
+
+    roll_no = student_data["roll_no"]
+    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
+    if not profile:
+        return redirect("student_profile")
+
+    if request.method == "POST":
+        if request.POST.get("no_disciplinary_action") != "on":
+            messages.error(
+                request,
+                "You must confirm that no disciplinary action has been taken against you. If any information provided is found to be invalid, disciplinary action may be taken.",
+            )
+            return redirect("student_profile_save")
+
+        profile.no_disciplinary_action = True
+        profile.is_profile_complete = True
+        profile.save()
+        request.session.pop("student_profile_data", None)
+        messages.success(request, "Profile saved successfully.")
+        return redirect("eligible_scholarships")
+
+    return render(request, "student_profile_declaration.html", {
+        "student": student_data,
+        "profile": profile,
+        "bank_passbook": file_details(profile.bank_passbook_file),
+        "jee_certificate": file_details(profile.jee_certificate_file),
+        "category_certificate": file_details(profile.category_certificate_file),
+        "income_proof": file_details(profile.income_proof_file),
+        "class_12_marksheet": file_details(profile.class_12_marksheet_file),
+        "fee_receipt_odd_semester": file_details(profile.fee_receipt_odd_semester_file),
+        "fee_receipt_even_semester": file_details(profile.fee_receipt_even_semester_file),
+        "domicile_certificate": file_details(profile.domicile_certificate_file),
+    })
 
 def edit_student_profile(request):
     student = request.session.get("student_data")
-    if not student: return redirect("common_login")
+    if not student:
+        return redirect("common_login")
     application = StudentScholarship.objects.filter(
         roll_no=student["roll_no"]).exclude(status="REJECTED").first()
     if application:
         messages.error(request, "Profile cannot be edited after applying for a scholarship.")
         return redirect("student_dashboard")
     request.session["edit_profile"] = True
-    return redirect("student_dashboard")
+    return redirect("student_profile")
 
 def _coerce_bool(value):
     if isinstance(value, bool):
@@ -362,7 +461,9 @@ def student_dashboard(request):
         "jee_certificate": file_details(profile.jee_certificate_file) if profile else None,
         "category_certificate": file_details(profile.category_certificate_file) if profile else None,
         "income_proof": file_details(profile.income_proof_file) if profile else None,
-        "fee_receipt": file_details(profile.fee_receipt_file) if profile else None,
+        "class_12_marksheet": file_details(profile.class_12_marksheet_file) if profile else None,
+        "fee_receipt_odd_semester": file_details(profile.fee_receipt_odd_semester_file) if profile else None,
+        "fee_receipt_even_semester": file_details(profile.fee_receipt_even_semester_file) if profile else None,
         "domicile_certificate": file_details(profile.domicile_certificate_file) if profile else None,
     }
     return render(request, "student_dashboard.html", 
@@ -378,6 +479,19 @@ def scholarship_detail(request, scholarship_id):
     if student:
         already_applied = StudentScholarship.objects.filter(roll_no=student["roll_no"],scholarship=scholarship).exists()
     return render(request, "scholarship_detail.html", {"scholarship": scholarship, "already_applied": already_applied})
+
+
+def download_bulk_upload_template(request):
+    template_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "scholarship_bulk_upl_template.xlsx",
+    )
+    if not os.path.exists(template_path):
+        raise Http404("Template file not found.")
+    response = FileResponse(open(template_path, "rb"), as_attachment=True)
+    response["Content-Disposition"] = "attachment; filename=scholarship_bulk_upl_template.xlsx"
+    return response
+
 
 def bulk_upload_scholarships(request):
     if request.method == "GET": return render(request, "bulk_upload_scholarships.html")

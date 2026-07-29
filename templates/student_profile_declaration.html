@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Scholarship Profile - Declaration{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-title">Step 3 of 3: Declaration</div>
+  <p>Please review the declaration carefully before submitting your scholarship profile.</p>
+  <div class="card" style="background:#f8fafc; border:1px solid #d1d5db;">
+    <div class="card-title" style="padding:12px 16px; font-size:17px;">Declaration</div>
+    <div style="padding:16px; color:#374151; line-height:1.7;">
+      I hereby declare that the information and documents provided in this application are true, complete, and correct to the best of my knowledge. I understand that false or misleading information may result in disqualification and disciplinary action.
+    </div>
+  </div>
+  <form method="post" action="{% url 'student_profile_save' %}">
+    {% csrf_token %}
+    <div class="form-group" style="margin-top:20px; background:#fff8e1; padding:16px; border:1px solid #f2c94c; border-radius:8px;">
+      <label style="display:flex; gap:12px; align-items:flex-start; margin:0; font-weight:600;">
+        <input type="checkbox" name="no_disciplinary_action" required>
+        <span>I confirm that all information and supporting documents submitted are true and accurate to the best of my knowledge.</span>
+      </label>
+    </div>
+    <div style="margin-top:20px; text-align:right;">
+      <a href="{% url 'student_profile_documents' %}" class="btn-secondary">Back to Uploads</a>
+      <button type="submit" class="btn-save">Submit Declaration</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

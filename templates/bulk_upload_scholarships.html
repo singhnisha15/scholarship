@@ -9,6 +9,14 @@
 
     <div class="card-title"> Bulk Upload Scholarships </div>
 
+    <p>
+        Download the template first and use it for bulk scholarship uploads:
+        <a href="{% url 'download_bulk_upload_template' %}" download class="btn-save" style="display: inline-block; text-decoration: none; margin-top: 6px;">
+            Download bulk upload template
+        </a>
+    </p>
+    <p style="color: #b91c1c; margin-top: 8px;"><strong>Note:</strong> Do not modify the column headers in the template. Keep them unchanged for correct bulk upload processing.</p>
+
     <form method="post" enctype="multipart/form-data">
 
         {% csrf_token %}

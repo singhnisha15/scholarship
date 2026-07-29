@@ -22,5 +22,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(remove_endorsement_column, migrations.RunPython.noop),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(remove_endorsement_column, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='studentscholarshipprofile',
+                    name='endorsement_certificate_file',
+                ),
+            ],
+        ),
     ]

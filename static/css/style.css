@@ -87,6 +87,12 @@ input, textarea, select {
 	width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; background: white; font-size: 14px;
 }
 input:focus, textarea:focus, select:focus { outline: none; border-color: #6c757d; box-shadow: 0 0 4px rgba(108,117,125,.25); }
+input[type="file"] { padding: 8px 10px; background: #f9fafb; }
+.upload-inline { margin-top: 10px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; }
+.upload-inline label { font-size: 13px; color: #4b5563; margin-bottom: 6px; }
+.existing-file { margin-top: 8px; font-size: 13px; color: #6b7280; }
+.compact-upload { padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fcfdff; }
+.supporting-grid { gap: 14px; }
 textarea { min-height: 130px; }
 select[multiple] { height: 150px; }
 small { display: block; margin-top: 5px; color: #777; }

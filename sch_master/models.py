@@ -170,11 +170,6 @@ class StudentScholarshipProfile(models.Model):
         default=False
     )
 
-    jee_advance_rank = models.IntegerField(
-        null=True,
-        blank=True
-    )
-
     jee_crl_rank = models.IntegerField(
         null=True,
         blank=True
@@ -188,6 +183,13 @@ class StudentScholarshipProfile(models.Model):
     annual_income = models.DecimalField(
         max_digits=12,
         decimal_places=2
+    )
+
+    class_12_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True
     )
 
     bank_passbook_file = models.FileField(
@@ -208,8 +210,20 @@ class StudentScholarshipProfile(models.Model):
         upload_to='documents/income/'
     )
 
-    fee_receipt_file = models.FileField(
-        upload_to='documents/fee/',
+    class_12_marksheet_file = models.FileField(
+        upload_to='documents/class_12/',
+        blank=True,
+        null=True
+    )
+
+    fee_receipt_odd_semester_file = models.FileField(
+        upload_to='documents/fee/odd/',
+        blank=True,
+        null=True
+    )
+
+    fee_receipt_even_semester_file = models.FileField(
+        upload_to='documents/fee/even/',
         blank=True,
         null=True
     )
