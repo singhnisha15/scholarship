@@ -133,9 +133,12 @@
             class="btn-save">
             {% if scholarship %}Update Scholarship{% else %}Save Scholarship{% endif %}
         </button>
-        <a href="{% url 'bulk_upload_scholarships' %}" class="btn-secondary">
+        <button
+            type="button"
+            class="btn-save"
+            onclick="window.location.href='{% url 'bulk_upload_scholarships' %}'">
             Go For Bulk Upload
-        </a>
+        </button>
     </div>
 
 
