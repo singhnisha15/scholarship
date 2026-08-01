@@ -31,9 +31,11 @@ urlpatterns = [
     path("scholarship/edit/<int:pk>/", views.edit_scholarship, name="edit_scholarship"),
     path("scholarship/delete/<int:pk>/", views.delete_scholarship, name="delete_scholarship"),
     path("student/profile/edit/", views.edit_student_profile, name="edit_student_profile"),
+    path("scholarship/award-bulk/",views.bulk_award_scholarships,name="bulk_award_scholarships",),
+    path("scholarship/award-bulk/template/", views.download_award_template,name="download_award_template",),
     path(
         "remove_application/<int:application_id>/",
         views.remove_scholarship_application,
         name="remove_scholarship_application",
-    ),
-]
+    ),   
+    ]

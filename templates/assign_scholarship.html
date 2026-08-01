@@ -5,8 +5,11 @@
 <div class="card">
     <div class="card-title">Assign Scholarship</div>
     <form method="post">
-        {% csrf_token %}
+        {% csrf_token %}        
         <input type="hidden" name="action" value="fetch">
+        <div class="row" align="right">
+            <a href="{% url 'bulk_award_scholarships' %}" class="btn-save" > Bulk Award Scholarships </a>
+        </div>
         <div class="row">
             <label>Roll Number</label>
             <input type="text" name="roll_no" required>

@@ -8,6 +8,8 @@ from .services.academic_api import get_student_details, get_photo_url, get_spi_c
 import pandas as pd
 from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship
 from django.utils import timezone
+from django.conf import settings
+from django.http import FileResponse
 
 def scholarship_create(request):
     criteria = CriteriaMaster.objects.filter(is_active=True).order_by('display_order')
@@ -713,17 +715,37 @@ def assign_scholarship(request):
         if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exists():
             messages.error(request, "This student has already been awarded a scholarship.")
             return redirect("assign_scholarship")
-        application.status = "AWARDED"
+        '''application.status = "AWARDED"
         application.award_year = timezone.now().year
         application.decision_date = timezone.now()
-        application.save()
-        messages.success(request, f"{scholarship.scholarship_name} awarded successfully.")
+        application.save()'''
+        success, msg = award_application(application)
+        if success:
+            messages.success(request,f"{scholarship.scholarship_name} awarded successfully.")
+        else:
+            messages.error(request, msg)
+        #messages.success(request, f"{scholarship.scholarship_name} awarded successfully.")
         return redirect("scholarship_dashboard")
   return render(request, "assign_scholarship.html", {
     "student": student,
     "student_applications": student_applications,
     "current_year": timezone.now().year,
   })
+
+def award_application(application):
+    """Award an already fetched StudentScholarship application.Returns (success, message)"""
+    if application.status == "AWARDED":
+        return False, "Scholarship already awarded."
+    if StudentScholarship.objects.filter(
+            roll_no=application.roll_no,
+            status="AWARDED"
+    ).exclude(id=application.id).exists():
+        return False, "Student has already been awarded another scholarship."
+    application.status = "AWARDED"
+    application.award_year = timezone.now().year
+    application.decision_date = timezone.now()
+    application.save()
+    return True, "Awarded successfully."
 
 
 def remove_scholarship_application(request, application_id):
@@ -735,3 +757,41 @@ def remove_scholarship_application(request, application_id):
         application.delete()
         messages.success(request, "Scholarship application removed successfully.")
     return redirect("student_dashboard")
+
+def bulk_award_scholarships(request):
+    if request.method == "GET": return render(request, "bulk_award_scholarships.html")
+    file = request.FILES["file"]
+    df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
+    required_columns = ["Student Roll Number", "Scholarship Name"]
+    missing = [c for c in required_columns if c not in df.columns]
+    if missing: messages.error(request, "Missing columns : " + ", ".join(missing)); return redirect("bulk_award_scholarships")
+    success = failed = 0
+    errors = []
+    for index, row in df.iterrows():
+        roll_no = str(row["Student Roll Number"]).strip(); scholarship_name = str(row["Scholarship Name"]).strip()
+        try: scholarship = ScholarshipMaster.objects.get(scholarship_name=scholarship_name, is_active=True)
+        except ScholarshipMaster.DoesNotExist:
+            failed += 1
+            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": "Scholarship not found"})
+            continue
+        application = StudentScholarship.objects.filter(roll_no=roll_no, scholarship=scholarship, status="APPLIED").first()
+        if application is None:
+            failed += 1
+            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": "Student has not applied"})
+            continue
+        ok, msg = award_application(application)
+        if ok: success += 1
+        else:
+            failed += 1
+            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": msg})
+    if errors: pd.DataFrame(errors).to_excel(os.path.join(settings.MEDIA_ROOT, "bulk_award_errors.xlsx"), index=False)
+    messages.success(request, f"{success} scholarship(s) awarded.")
+    if failed: messages.warning(request, f"{failed} record(s) skipped.")
+    return redirect("bulk_award_scholarships")
+
+
+def download_award_template(request):
+    template_path = os.path.join(settings.BASE_DIR, "templates","Award_Scholarship_Template.xlsx",)
+    if not os.path.exists(template_path):
+        raise Http404("Template not found.")
+    return FileResponse(open(template_path, "rb"), as_attachment=True, filename="Award_Scholarship_Template.xlsx",)

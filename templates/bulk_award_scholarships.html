@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}
+Bulk Award Scholarships
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-title">
+        Bulk Award Scholarships
+    </div>
+    <p>
+        {% if messages %}
+        <div class="card" style="margin-top:20px;">
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        Download the template first and use it for awarding scholarships.
+        <a href="{% url 'download_award_template' %}" download class="btn-save" style="display:inline-block;text-decoration:none;margin-top:6px;">Download Award Template</a>
+    </p>
+    <p style="color:#b91c1c;margin-top:8px;"><strong>Note:</strong> Do not modify the column headers, and use the exact scholarship name from the Scholarship Master.</p>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row">
+            <label>Award Excel/CSV File</label>
+            <input type="file" name="file" accept=".xlsx,.xls,.csv" required>
+        </div>
+        <button class="btn-save" type="submit">Upload</button>
+    </form>
+</div>
+{% endblock %}
