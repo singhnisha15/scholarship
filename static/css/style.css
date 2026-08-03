@@ -39,7 +39,11 @@ body {
 .sub-title { color: #d7d7d7; font-size: 14px; }
 
 /* Messages */
-.alert-container { margin-bottom: 20px; }
+.alert-container {
+	margin-bottom: 20px;
+	position: relative;
+	z-index: 1000;
+}
 .alert {
 	display: flex;
 	align-items: flex-start;
@@ -50,6 +54,7 @@ body {
 	font-weight: 700;
 	line-height: 1.4;
 	margin-bottom: 12px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 .alert-icon { font-size: 18px; line-height: 1; margin-top: 2px; }
 .alert-text { font-weight: 700; }

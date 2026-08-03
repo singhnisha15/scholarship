@@ -4,7 +4,11 @@
   <!-- LEFT PANEL -->
   <div class="left-panel">
     <div class="card profile-card">
-      <img src="{{ student.photo_url }}" class="profile-photo" alt="Student Photo">
+      {% if student.photo_url %}
+      <img id="studentPhoto" data-src="{{ student.photo_url }}" class="profile-photo" alt="Student Photo" style="display:none;">
+      {% else %}
+      <img id="studentPhoto" class="profile-photo" alt="Student Photo" style="display:none;">
+      {% endif %}
       <div class="student-name">{{ student.name }}</div>
       <div class="student-program">{{ student.program }}</div>
       <div class="student-info">
@@ -104,5 +108,23 @@ window.onclick = function(event) {
   let modal = document.getElementById("profileModal");
   if(event.target == modal) modal.style.display = "none";
 }
+</script>
+<script>
+// Attempt to load the student's photo but keep it hidden if it takes too long
+(function(){
+  try{
+    const img = document.getElementById('studentPhoto');
+    if(!img) return;
+    const src = img.getAttribute('data-src');
+    if(!src) { img.style.display = 'none'; return; }
+    let loaded = false;
+    const timeoutMs = 2000; // show only if loads within 2s
+    const timer = setTimeout(()=>{ if(!loaded){ img.style.display='none'; } }, timeoutMs);
+    const loader = new Image();
+    loader.onload = function(){ loaded = true; clearTimeout(timer); img.src = src; img.style.display = 'block'; };
+    loader.onerror = function(){ clearTimeout(timer); img.style.display = 'none'; };
+    loader.src = src;
+  }catch(e){ console.log('photo loader error', e); }
+})();
 </script>
 {% endblock %}

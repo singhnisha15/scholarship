@@ -285,11 +285,6 @@ class StudentScholarship(models.Model):
         auto_now_add=True
     )
 
-    decision_date = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
     award_year = models.IntegerField(
         null=True,
         blank=True
@@ -302,3 +297,31 @@ class StudentScholarship(models.Model):
 
     class Meta:
         db_table = "student_scholarship"
+
+
+class StudentScholarshipAward(models.Model):
+
+    student_scholarship = models.OneToOneField(
+        StudentScholarship,
+        on_delete=models.CASCADE,
+        related_name='award'
+    )
+
+    decision_date = models.DateTimeField()
+
+    awarded_by = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        db_table = "student_scholarship_award"

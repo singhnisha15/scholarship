@@ -4,12 +4,13 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import FileResponse, Http404
+from django.urls import reverse
+from django.utils.html import format_html
 from .services.academic_api import get_student_details, get_photo_url, get_spi_cpi
 import pandas as pd
-from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship
+from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship, StudentScholarshipAward
 from django.utils import timezone
 from django.conf import settings
-from django.http import FileResponse
 
 def scholarship_create(request):
     criteria = CriteriaMaster.objects.filter(is_active=True).order_by('display_order')
@@ -102,8 +103,15 @@ def common_login(request):
     return render(request, "common_login.html")
 
 def google_login(request):
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+    else:
+        email = request.GET.get("email", "").strip()
 
-    email = "nisha.cis@itbhu.ac.in"      #nishasingh.rs.cse21@itbhu.ac.in Change to request.user.email in production or yuvrajk.choudhary.min25@itbhu.ac.in
+    if not email:
+        messages.error(request, "Please enter your email address to continue.")
+        return redirect("common_login")
+    #email = "aditya.ahirwar.eee23@itbhu.ac.in"
     request.session["email"] = email
 
     office_users = [
@@ -113,8 +121,10 @@ def google_login(request):
     ]
 
     if email.lower() in office_users:
+        messages.success(request, "Signed in as staff.")
         return redirect("scholarship_dashboard")
 
+    messages.success(request, "Signed in as student.")
     return redirect("student_dashboard")
 
 def student_profile(request):
@@ -319,60 +329,110 @@ def is_scholarship_eligible(scholarship, student, profile):
     print(f"Checking Scholarship : {scholarship.scholarship_name}")
     print(f"Student : {student['name']}")
     print("=" * 80)
+    reasons = []
     for criterion in scholarship.criteria.all():
         name = CriteriaMaster.normalize_criteria_name(criterion.criteria.criteria_name)
         print(f"Evaluating Criterion: {name}")
         value = criterion.criteria_value
         if name == "Gender":
             print(f"Gender => Student={student['gender']} Required={value}")
-            if student["gender"] != value: return False
+            if student["gender"] != value:
+                reason = f"Gender criteria mismatch: expected '{value}', got '{student['gender']}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Program":
             allowed = json.loads(value)
             print(f"Program => Student={student['program']} Allowed={allowed}")
-            if student["program"] not in allowed: return False
+            if student["program"] not in allowed:
+                reason = f"Program criteria mismatch: '{student['program']}' is not in {allowed}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Department":
             allowed = json.loads(value)
             print(f"Department => Student={student['department']} Allowed={allowed}")
-            if student["department"] not in allowed: return False
+            if student["department"] not in allowed:
+                reason = f"Department criteria mismatch: '{student['department']}' is not in {allowed}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Category":
-            if student["category"] != value: return False
+            if student["category"] != value:
+                reason = f"Category criteria mismatch: expected '{value}', got '{student['category']}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Income":
             print(f"Income => Student={profile.annual_income} Limit={value}")
-            if float(profile.annual_income) >= float(value): return False
+            if float(profile.annual_income) > float(value):
+                reason = f"Income criteria mismatch: annual income {profile.annual_income} exceeds the limit {value}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Single Parent":
             required = value == "Yes"
             print("profile.single_parent_child: ", profile.single_parent_child)
-            if profile.single_parent_child != required: return False
+            if profile.single_parent_child != required:
+                reason = f"Single-parent criteria mismatch: required '{required}', got '{profile.single_parent_child}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Age":
             dob = datetime.strptime(student["dob"], "%d-%m-%Y")
             age = datetime.today().year - dob.year
             age_limit = int(float(value))
             print(f"Age => Student={age} Limit={value}")
-            if age >= age_limit: return False
+            if age >= age_limit:
+                reason = f"Age criteria mismatch: student age {age} is not below the required limit {age_limit}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "SPI":
             required_spi = float(value)
             print(f"SPI => Student={student['spi']} Required={required_spi}")
-            if student["spi"] < required_spi: return False
+            if student["spi"] < required_spi:
+                reason = f"SPI criteria mismatch: student SPI {student['spi']} is below the required {required_spi}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "CPI":
             required_cpi = float(value)
             print(f"CPI => Student={student['cpi']} Required={required_cpi}")
-            if student["cpi"] < required_cpi: return False
+            if student["cpi"] < required_cpi:
+                reason = f"CPI criteria mismatch: student CPI {student['cpi']} is below the required {required_cpi}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Credits Complete":
             required = value == "Yes"
             has_completed_credits = student["credits_earned"] >= 100
             print(f"Credits Complete => Student={has_completed_credits} Required={required}")
-            if has_completed_credits != required: return False
+            if has_completed_credits != required:
+                reason = f"Credits-complete criteria mismatch: required '{required}', got '{has_completed_credits}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name in {"Has Failed Grade", "Pass Status"}:
             required = value == "Yes"
             student_has_failed_grade = _student_has_failed_grade(student)
             print(f"Has Failed Grade => Student={student_has_failed_grade} Required={required}")
-            if student_has_failed_grade != required: return False
+            if student_has_failed_grade != required:
+                reason = f"Pass-status criteria mismatch: required '{required}', got '{student_has_failed_grade}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
         elif name == "Disciplinary Action":
             required = value == "Yes"
             student_has_disciplinary_action = not getattr(profile, "no_disciplinary_action", False)
             print(f"Disciplinary Action => Student={student_has_disciplinary_action} Required={required}")
-            if student_has_disciplinary_action != required: return False
-    return True
+            if student_has_disciplinary_action != required:
+                reason = f"Disciplinary-action criteria mismatch: required '{required}', got '{student_has_disciplinary_action}'."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons
+    print(f"Result => ELIGIBLE")
+    return True, reasons
             
 
 def eligible_scholarships(request):
@@ -380,8 +440,15 @@ def eligible_scholarships(request):
     if not student: return redirect("common_login")
     profile = StudentScholarshipProfile.objects.get(roll_no=student["roll_no"])
     scholarships = ScholarshipMaster.objects.filter(is_active=True)
-    eligible = [sch for sch in scholarships if is_scholarship_eligible(sch, student, profile)]
-    return render(request, "eligible_scholarships.html", {"student": student, "scholarships": eligible})
+    eligible = []
+    debug_notes = []
+    for scholarship in scholarships:
+        is_eligible, reasons = is_scholarship_eligible(scholarship, student, profile)
+        if is_eligible:
+            eligible.append(scholarship)
+        else:
+            debug_notes.append({"scholarship": scholarship, "reasons": reasons})
+    return render(request, "eligible_scholarships.html", {"student": student, "scholarships": eligible, "debug_notes": debug_notes})
 
 def file_details(field):
     if not field:
@@ -396,58 +463,76 @@ def file_details(field):
 
 def student_dashboard(request):
     email = request.session.get("email")
-    print("Email =", email)
-    #rollno = "21071508"
-    #print("Roll No =", rollno)
-    student = get_student_details(email)
-    print(type(student)); print("Student from API =", student)
-    if not email: return redirect("common_login")
-    student = get_student_details(email)
-
-    print(type(student))
-    print("Student from API =", repr(student))
-
-    if not (student and student.strip()):
-        messages.error(request, "Academic server returned an empty response.")
+    if not email:
         return redirect("common_login")
 
-    student = json.loads(student)
+    print("Email =", email)
 
-    try:            #SPI CPI from academic server
-        spi_data = get_spi_cpi(student.get("Roll No"), "2026-27-1")
-    except Exception as e:
-        print("SPI/CPI API Error:", e)
-        spi_data = {}
+    student = request.session.get("student_data")
+    if not student or student.get("email") != email:
+        student_payload = get_student_details(email)
+        print(type(student_payload))
+        print("Student from API =", student_payload)
 
-    def parse_float(value):
+        if not (student_payload and student_payload.strip()):
+            messages.error(request, "Academic server returned an empty response. Please try again later.")
+            return redirect("common_login")
+
         try:
-            return float(value)
-        except (TypeError, ValueError):
-            return 0.0
+            student_api_data = json.loads(student_payload)
+        except Exception as exc:
+            print("Student API parse error:", exc)
+            messages.error(request, "Unable to read student details from the academic server.")
+            return redirect("common_login")
 
-    student = {
-        "roll_no": (student.get("Roll No") or "").strip(),
-        "name": student.get("Name"),
-        "gender": student.get("Gender"),
-        "category": student.get("Category"),
-        "program": student.get("prg"),
-        "department": student.get("dept"),
-        "batch": student.get("Current Batch"),
-        "email": (student.get("email") or "").strip(),
-        "contact_no": student.get("contact_no"),
-        "admit_year": student.get("admit_year"),
-        "dob": student.get("dob"),
-        "spi": parse_float(spi_data.get("spi")),
-        "cpi": parse_float(spi_data.get("cpi")),
-        "credits_earned": parse_float(spi_data.get("percent_credits_earned")),
-        "pass_status": student.get("pass_status"),
-    }
+        try:
+            spi_data = get_spi_cpi(student_api_data.get("Roll No"), "2025-26-2")
 
-    
-    
-    print("student =", student); print("keys =", student.keys())
-    student["photo_url"] = "/static/images/Nisha_photo.jpg"
-    request.session["student_data"] = student
+        except Exception as exc:
+            print("SPI/CPI API Error:", exc)
+            spi_data = {}
+
+        def parse_float(value):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return 0.0
+
+        student = {
+            "roll_no": (student_api_data.get("Roll No") or "").strip(),
+            "name": student_api_data.get("Name"),
+            "gender": student_api_data.get("Gender"),
+            "category": student_api_data.get("Category"),
+            "program": student_api_data.get("prg"),
+            "department": student_api_data.get("dept"),
+            "batch": student_api_data.get("Current Batch"),
+            "email": (student_api_data.get("email") or "").strip(),
+            "contact_no": student_api_data.get("contact_no"),
+            "admit_year": student_api_data.get("admit_year"),
+            "dob": student_api_data.get("dob"),
+            "spi": parse_float(spi_data.get("spi")),
+            "cpi": parse_float(spi_data.get("cpi")),
+            "credits_earned": parse_float(spi_data.get("percent_credits_earned")),
+            "pass_status": student_api_data.get("pass_status"),
+        }
+        # Use the academic API to construct the photograph URL. If anything goes
+        # wrong or roll number is missing, keep the value empty so the
+        # front-end can choose to show nothing.
+        photo_url = ""
+        try:
+            roll = (student.get("roll_no") or "").strip()
+            if roll:
+                photo_url = get_photo_url(roll)
+        except Exception as exc:
+            print("Photo URL generation error:", exc)
+            photo_url = ""
+
+        student["photo_url"] = photo_url
+        request.session["student_data"] = student
+
+    print("student =", student)
+    print("keys =", student.keys())
+
     student_scholarships = StudentScholarship.objects.filter(roll_no=student["roll_no"]
     ).order_by("-application_date")
     profile = StudentScholarshipProfile.objects.filter(roll_no=student["roll_no"]).first()
@@ -711,20 +796,21 @@ def assign_scholarship(request):
         print("AWARD ROLL =", roll_no)
         print("SCHOLARSHIP ID =", request.POST.get("scholarship_id"))
         scholarship = get_object_or_404(ScholarshipMaster, scholarship_id=request.POST.get("scholarship_id"))
-        application = get_object_or_404(StudentScholarship, roll_no=roll_no, scholarship=scholarship)
-        if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exists():
-            messages.error(request, "This student has already been awarded a scholarship.")
+        application = StudentScholarship.objects.filter(roll_no=roll_no, scholarship=scholarship).first()
+        if application is None:
+            messages.error(request, "No scholarship application was found for this student and scholarship.")
             return redirect("assign_scholarship")
-        '''application.status = "AWARDED"
-        application.award_year = timezone.now().year
-        application.decision_date = timezone.now()
-        application.save()'''
+        if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exclude(id=application.id).exists():
+            messages.error(request, "This student has already been awarded another scholarship.")
+            return redirect("assign_scholarship")
+        if application.status == "AWARDED":
+            messages.error(request, "This scholarship is already awarded to the student.")
+            return redirect("assign_scholarship")
         success, msg = award_application(application)
         if success:
             messages.success(request,f"{scholarship.scholarship_name} awarded successfully.")
         else:
             messages.error(request, msg)
-        #messages.success(request, f"{scholarship.scholarship_name} awarded successfully.")
         return redirect("scholarship_dashboard")
   return render(request, "assign_scholarship.html", {
     "student": student,
@@ -743,9 +829,42 @@ def award_application(application):
         return False, "Student has already been awarded another scholarship."
     application.status = "AWARDED"
     application.award_year = timezone.now().year
-    application.decision_date = timezone.now()
     application.save()
+    award, created = StudentScholarshipAward.objects.get_or_create(
+        student_scholarship=application,
+        defaults={
+            'decision_date': timezone.now(),
+        }
+    )
+    if not created and award.decision_date is None:
+        award.decision_date = timezone.now()
+        award.save()
     return True, "Awarded successfully."
+
+
+def _format_bulk_award_failure_reason(reason):
+    friendly_map = {
+        "Scholarship not found": "the scholarship name could not be matched",
+        "Student has not applied": "the student has not applied for that scholarship",
+        "Scholarship already awarded": "the scholarship was already awarded",
+        "Student has already been awarded another scholarship.": "the student has already been awarded another scholarship",
+    }
+    return friendly_map.get(reason, reason)
+
+
+def _build_bulk_award_failure_summary(errors):
+    reason_counts = {}
+    for error in errors:
+        reason = error.get("Reason", "Unknown")
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
+
+    if not reason_counts:
+        return ""
+
+    detail_parts = []
+    for reason, count in sorted(reason_counts.items()):
+        detail_parts.append(f"{count} row(s) were skipped because {_format_bulk_award_failure_reason(reason)}")
+    return "Summary: " + "; ".join(detail_parts)
 
 
 def remove_scholarship_application(request, application_id):
@@ -768,26 +887,76 @@ def bulk_award_scholarships(request):
     success = failed = 0
     errors = []
     for index, row in df.iterrows():
-        roll_no = str(row["Student Roll Number"]).strip(); scholarship_name = str(row["Scholarship Name"]).strip()
-        try: scholarship = ScholarshipMaster.objects.get(scholarship_name=scholarship_name, is_active=True)
-        except ScholarshipMaster.DoesNotExist:
+        roll_no = str(row["Student Roll Number"]).strip()
+        scholarship_name = str(row["Scholarship Name"]).strip()
+        scholarships_qs = ScholarshipMaster.objects.filter(scholarship_name__iexact=scholarship_name.strip(), is_active=True)
+        count = scholarships_qs.count()
+        if count == 0:
             failed += 1
-            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": "Scholarship not found"})
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": "Scholarship not found"})
             continue
-        application = StudentScholarship.objects.filter(roll_no=roll_no, scholarship=scholarship, status="APPLIED").first()
+        scholarship = scholarships_qs.first()
+        if count > 1:
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": f"Multiple scholarships matched ({count}); using first match."})
+        application = StudentScholarship.objects.filter(roll_no=roll_no, scholarship=scholarship).first()
         if application is None:
             failed += 1
-            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": "Student has not applied"})
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": "No matching scholarship application found"})
+            continue
+        if application.status == "AWARDED":
+            failed += 1
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": "Scholarship already awarded"})
+            continue
+        if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exclude(id=application.id).exists():
+            failed += 1
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": "Student has already been awarded another scholarship."})
+            continue
+        if application.status != "APPLIED":
+            failed += 1
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": f"Application is not in APPLIED status (current: {application.status})"})
             continue
         ok, msg = award_application(application)
-        if ok: success += 1
+        if ok:
+            success += 1
         else:
             failed += 1
-            errors.append({"Row": index + 2, "Roll No": roll_no, "Scholarship": scholarship_name, "Reason": msg})
-    if errors: pd.DataFrame(errors).to_excel(os.path.join(settings.MEDIA_ROOT, "bulk_award_errors.xlsx"), index=False)
-    messages.success(request, f"{success} scholarship(s) awarded.")
-    if failed: messages.warning(request, f"{failed} record(s) skipped.")
+            errors.append({"Line Number": index + 2, "Student Roll Number": roll_no, "Scholarship Name": scholarship_name, "Reason": msg})
+    report_name = "bulk_award_errors.xlsx"
+    report_path = os.path.join(settings.MEDIA_ROOT, report_name)
+    report_ready = False
+    if errors:
+        media_root = str(settings.MEDIA_ROOT)
+        try:
+            os.makedirs(media_root, exist_ok=True)
+            error_df = pd.DataFrame(errors)
+            error_df.to_excel(report_path, index=False)
+            report_ready = os.path.exists(report_path)
+        except Exception as e:
+            messages.error(request, f"Failed to save error report: {e}")
+    if success:
+        messages.success(request, f"{success} scholarship(s) awarded successfully.")
+    elif not errors:
+        messages.info(request, "No scholarships were awarded from this file.")
+    if failed:
+        summary = _build_bulk_award_failure_summary(errors)
+        if report_ready:
+            download_url = reverse("download_bulk_award_report")
+            messages.warning(request, format_html(
+                "{} record(s) skipped. <a href='{}' target='_blank' download>Download the skipped rows report</a> for line numbers and reasons. {}",
+                failed,
+                download_url,
+                summary,
+            ))
+        else:
+            messages.warning(request, f"{failed} record(s) skipped. {summary}")
     return redirect("bulk_award_scholarships")
+
+
+def download_bulk_award_report(request):
+    report_path = os.path.join(settings.MEDIA_ROOT, "bulk_award_errors.xlsx")
+    if not os.path.exists(report_path):
+        raise Http404("Report not found.")
+    return FileResponse(open(report_path, "rb"), as_attachment=True, filename="bulk_award_errors.xlsx")
 
 
 def download_award_template(request):

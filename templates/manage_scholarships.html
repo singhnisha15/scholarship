@@ -47,7 +47,7 @@
           </td>
           <td class="actions-cell">
             <a href="{% url 'edit_scholarship' scholarship.scholarship_id %}" class="btn btn-secondary">Modify</a>
-            <form method="post" action="{% url 'delete_scholarship' scholarship.scholarship_id %}" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this scholarship?');">
+            <form method="post" action="{% url 'delete_scholarship' scholarship.scholarship_id %}" class="inline-form" data-confirm="Are you sure you want to delete this scholarship?">
               {% csrf_token %}
               <button type="submit" class="btn btn-danger">Delete</button>
             </form>

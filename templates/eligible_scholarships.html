@@ -66,4 +66,19 @@
 
 {% endif %}
 
+{% if debug_notes %}
+<div class="card">
+    <h3>Eligibility Debug Notes</h3>
+    <p>The following scholarships were not shown because one or more criteria did not match.</p>
+    <ul>
+        {% for note in debug_notes %}
+            <li>
+                <strong>{{ note.scholarship.scholarship_name }}</strong>:
+                {{ note.reasons|join:"; " }}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 {% endblock %}

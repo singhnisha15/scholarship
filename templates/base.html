@@ -61,13 +61,32 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    const important = document.querySelectorAll(".alert.alert-error, .alert.alert-warning, .alert.alert-danger");
-    if (important.length) {
-      const text = Array.from(important)
+    const alerts = document.querySelectorAll(".alert");
+    if (alerts.length) {
+      const text = Array.from(alerts)
         .map(el => el.textContent.trim())
         .join("\n\n");
       alert(text);
     }
+
+    document.querySelectorAll('[data-confirm]').forEach(function(element) {
+      const message = element.getAttribute('data-confirm');
+      if (!message) return;
+
+      if (element.tagName === 'FORM') {
+        element.addEventListener('submit', function(event) {
+          if (!window.confirm(message)) {
+            event.preventDefault();
+          }
+        });
+      } else {
+        element.addEventListener('click', function(event) {
+          if (!window.confirm(message)) {
+            event.preventDefault();
+          }
+        });
+      }
+    });
   });
 </script>
 

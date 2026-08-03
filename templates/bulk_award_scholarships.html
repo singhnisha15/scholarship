@@ -11,7 +11,7 @@ Bulk Award Scholarships
         {% if messages %}
         <div class="card" style="margin-top:20px;">
             {% for message in messages %}
-                <p>{{ message }}</p>
+                <p>{{ message|safe }}</p>
             {% endfor %}
         </div>
         {% endif %}

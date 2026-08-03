@@ -110,17 +110,27 @@
 
         <p>
             Welcome to the IIT (BHU) Scholarship Management Portal.
-            Please sign in using your Institute Google Account to
-            view scholarship eligibility and submit applications.
+            This is a temporary email-based login for testing.
+            Staff emails will open the staff dashboard, while student emails will open the student portal.
         </p>
 
-        <a
-            href="{% url 'google_login' %}"
-            class="google-btn">
-
-            Login with Google
-
-        </a>
+        <form method="post" action="{% url 'google_login' %}">
+            {% csrf_token %}
+            <div style="margin-bottom: 16px; text-align: left;">
+                <label for="email" style="display:block;margin-bottom:6px;font-weight:600;">Email address</label>
+                <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="Enter your institute email"
+                    style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;"
+                >
+            </div>
+            <button type="submit" class="google-btn" style="border:none;cursor:pointer;">
+                Continue to Portal
+            </button>
+        </form>
 
     </div>
 
