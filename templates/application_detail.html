@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Application Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Application Detail</h1>
+    <a href="{% url 'application_management' %}" class="btn-secondary">Back to Application Management</a>
+</div>
+
+<div class="dashboard-container">
+    <div class="left-panel">
+        <div class="card profile-card">
+            {% if student.photo_url %}
+            <img src="{{ student.photo_url }}" class="profile-photo" alt="Student Photo">
+            {% else %}
+            <div class="profile-photo" style="display:flex; align-items:center; justify-content:center;">No Photo</div>
+            {% endif %}
+            <div class="student-name">{{ student.name }}</div>
+            <div class="student-program">{{ student.program }}</div>
+            <div class="student-info">
+                <div class="info-item"><span class="info-label">Roll Number</span><span class="info-value">{{ roll_no }}</span></div>
+                <div class="info-item"><span class="info-label">Department</span><span class="info-value">{{ student.department }}</span></div>
+                <div class="info-item"><span class="info-label">Semester</span><span class="info-value">{{ student.batch }}</span></div>
+                <div class="info-item"><span class="info-label">SPI</span><span class="info-value">{{ student.spi }}</span></div>
+                <div class="info-item"><span class="info-label">CPI</span><span class="info-value">{{ student.cpi }}</span></div>
+                <div class="info-item"><span class="info-label">Category</span><span class="info-value">{{ student.category }}</span></div>
+                <div class="info-item"><span class="info-label">Annual Income</span><span class="info-value">{{ profile.annual_income|default:"N/A" }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="card">
+            <div class="card-title">Applied Scholarships</div>
+            <table class="scholarship-table">
+                <thead>
+                    <tr>
+                        <th>Scholarship</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td>{{ app.scholarship.scholarship_name }}</td>
+                        <td>{{ app.status }}</td>
+                        <td>{{ app.application_date|date:"d M Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Uploaded Documents</div>
+            {% if documents %}
+            <ul>
+                {% for doc in documents %}
+                <li><strong>{{ doc.label }}:</strong> {{ doc.filename }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No supporting documents found.</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-title">Downloads</div>
+            <div class="actions-cell">
+                <a href="{% url 'download_application_summary_pdf' roll_no %}" class="btn btn-secondary">Download Summary</a>
+                <a href="{% url 'download_application_complete_pdf' roll_no %}" class="btn btn-secondary">Download Complete Application</a>
+                <a href="{% url 'download_application_documents_zip' roll_no %}" class="btn btn-secondary">Download Documents ZIP</a>
+                <a href="{% url 'download_application_bundle' roll_no %}" class="btn btn-secondary">Download Complete Bundle</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

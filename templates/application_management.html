@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Application Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Application Management</h1>
+    <a href="{% url 'scholarship_dashboard' %}" class="btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="summary-value">{{ summary.total }}</div>
+        <div class="summary-title">Total Students Applied</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ summary.pending }}</div>
+        <div class="summary-title">Pending Scrutiny</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ summary.awarded }}</div>
+        <div class="summary-title">Awarded</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ summary.rejected }}</div>
+        <div class="summary-title">Rejected</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Search Applications</div>
+    <form method="get" style="display:grid; grid-template-columns:repeat(5, minmax(160px, 1fr)); gap:12px; align-items:end;">
+        <input type="hidden" name="searched" value="1">
+        <div>
+            <label>Roll Number</label>
+            <input type="text" name="roll_no" value="{{ selected.roll_no }}" placeholder="e.g. 23011001">
+        </div>
+        <div>
+            <label>Department</label>
+            <select name="department">
+                <option value="">All Departments</option>
+                {% for dept in departments %}
+                <option value="{{ dept }}" {% if selected.department == dept %}selected{% endif %}>{{ dept }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Scholarship</label>
+            <select name="scholarship">
+                <option value="">All Scholarships</option>
+                {% for scholarship in scholarships %}
+                <option value="{{ scholarship.scholarship_id }}" {% if selected.scholarship_id == scholarship.scholarship_id|stringformat:"s" %}selected{% endif %}>{{ scholarship.scholarship_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Academic Session</label>
+            <select name="academic_session">
+                <option value="">All Sessions</option>
+                {% for academic_session in academic_sessions %}
+                <option value="{{ academic_session }}" {% if selected.academic_session == academic_session %}selected{% endif %}>{{ academic_session }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="PENDING" {% if selected.status == "PENDING" %}selected{% endif %}>Pending</option>
+                <option value="AWARDED" {% if selected.status == "AWARDED" %}selected{% endif %}>Awarded</option>
+                <option value="REJECTED" {% if selected.status == "REJECTED" %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:12px; grid-column: span 2;">
+            <button type="submit" class="btn-save">Search</button>
+            <a href="{% url 'application_management' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+{% if has_searched %}
+<div class="table-card card">
+    <div class="card-title" style="padding: 16px 20px 0 20px;">Search Results ({{ applications|length }})</div>
+    <table class="scholarship-table">
+        <thead>
+            <tr>
+                <th>Roll No</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Scholarships Applied</th>
+                <th>Session</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in applications %}
+            <tr>
+                <td>{{ item.roll_no }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.department }}</td>
+                <td>{{ item.scholarships_applied }}</td>
+                <td>{{ item.academic_session }}</td>
+                <td>{{ item.status }}</td>
+                <td>
+                    <a href="{% url 'application_detail' item.roll_no %}" class="btn btn-secondary">View</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="empty-row">No applications found for the selected filters.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card" style="margin-top: 15px;">
+    <div class="card-title">Download Current Search Result</div>
+    <p>The ZIP will include only students returned by the current search filters.</p>
+    <form method="get" action="{% url 'download_application_scope_zip' %}">
+        <input type="hidden" name="scope" value="search">
+        <input type="hidden" name="roll_no" value="{{ selected.roll_no }}">
+        <input type="hidden" name="department" value="{{ selected.department }}">
+        <input type="hidden" name="scholarship" value="{{ selected.scholarship_id }}">
+        <input type="hidden" name="academic_session" value="{{ selected.academic_session }}">
+        <input type="hidden" name="status" value="{{ selected.status }}">
+        <button type="submit" class="btn-save" {% if not applications %}disabled{% endif %}>Download Search Result ZIP</button>
+    </form>
+</div>
+{% else %}
+<div class="card">
+    <p>Use the search filters above and click Search to view scholarship applications.</p>
+</div>
+{% endif %}
+{% endblock %}

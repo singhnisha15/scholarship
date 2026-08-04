@@ -48,6 +48,19 @@
 
         </div>
 
+        <div class="header-right">
+          {% if request.resolver_match.url_name != 'common_login' %}
+            {% if request.session.home_url %}
+              <a href="{% url request.session.home_url %}" class="nav-link">Home</a>
+            {% else %}
+              <a href="{% url 'common_login' %}" class="nav-link">Home</a>
+            {% endif %}
+            {% endif %}
+            {% if request.session.email %}
+                <a href="{% url 'logout' %}" class="nav-link nav-logout">Logout</a>
+            {% endif %}
+        </div>
+
     </header>
 
     <main>

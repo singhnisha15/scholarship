@@ -1,6 +1,5 @@
 {
   "python.terminal.useEnvFile": true,
-  "python.defaultInterpreterPath": "/home/nisha/scholarship/schvenv/bin/python",
   "chat.tools.terminal.autoApprove": {
     "where.exe": true,
     "/^python --version ; python manage\\.py migrate --noinput$/": {

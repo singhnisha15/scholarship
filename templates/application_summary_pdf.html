@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Application Summary</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
+        h1, h2 { margin-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #cccccc; padding: 6px; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Scholarship Application Summary</h1>
+    <p>Roll Number: {{ roll_no }}</p>
+    <p>Name: {{ student.name }}</p>
+    <p>Department: {{ student.department }}</p>
+
+    <h2>Applied Scholarships</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Scholarship</th>
+                <th>Status</th>
+                <th>Applied On</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for app in applications %}
+            <tr>
+                <td>{{ app.scholarship.scholarship_name }}</td>
+                <td>{{ app.status }}</td>
+                <td>{{ app.application_date|date:"d M Y" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

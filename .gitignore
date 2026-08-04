@@ -4,6 +4,8 @@ __pycache__/
 
 # Virtual environments
 venv/
+.venv/
+schvenv/
 .env
 
 # Django
