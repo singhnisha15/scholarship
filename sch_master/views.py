@@ -14,10 +14,71 @@ import pandas as pd
 from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship, StudentScholarshipAward
 from django.utils import timezone
 from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from decimal import Decimal, InvalidOperation
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
+from io import BytesIO
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from pypdf import PdfReader, PdfWriter
+import zipfile
+import tempfile
+from django.http import FileResponse
+
+DOCUMENT_FIELDS = [
+    ("Bank Passbook", "bank_passbook_file"),
+    ("JEE Certificate", "jee_certificate_file"),
+    ("Category Certificate", "category_certificate_file"),
+    ("Income Proof", "income_proof_file"),
+    ("Class XII Marksheet", "class_12_marksheet_file"),
+    ("Odd Semester Fee Receipt", "fee_receipt_odd_semester_file"),
+    ("Even Semester Fee Receipt", "fee_receipt_even_semester_file"),
+    ("Domicile Certificate", "domicile_certificate_file"),
+]
+SEMESTER_MAP = {
+    "Sem-I": "Semester-I", "Sem-II": "Semester-II", "Sem-III": "Semester-III",
+    "Sem-IV": "Semester-IV", "Sem-V": "Semester-V", "Sem-VI": "Semester-VI",
+    "Sem-VII": "Semester-VII", "Sem-VIII": "Semester-VIII", "Sem-IX": "Semester-IX",
+    "Sem-X": "Semester-X", "Semester-I": "Semester-I", "Semester-II": "Semester-II",
+    "Semester-III": "Semester-III", "Semester-IV": "Semester-IV", "Semester-V": "Semester-V",
+    "Semester-VI": "Semester-VI", "Semester-VII": "Semester-VII", "Semester-VIII": "Semester-VIII",
+    "Semester-IX": "Semester-IX", "Semester-X": "Semester-X",
+}
+DEPARTMENT_MAP = {
+    "Architecture": "Department of Architecture, Planning and Design",
+    "Ceramic": "Department of Ceramic Engineering",
+    "Chemical": "Department of Chemical Engineering and Technology",
+    "Civil": "Department of Civil Engineering",
+    "Computer": "Department of Computer Science and Engineering",
+    "Computer Science": "Department of Computer Science and Engineering",
+    "Electrical": "Department of Electrical Engineering",
+    "Electronics": "Department of Electronics Engineering",
+    "Mechanical": "Department of Mechanical Engineering",
+    "Metallurgical": "Department of Metallurgical Engineering",
+    "Mining": "Department of Mining Engineering",
+    "Pharmaceutical": "Department of Pharmaceutical Engineering & Technology",
+    "Biochemical": "School of Biochemical Engineering",
+    "Biomedical": "School of Biomedical Engineering",
+    "Decision Science": "School of Decision Science and Engineering",
+    "DSE": "School of Decision Science and Engineering",
+    "Materials": "School of Materials Science and Technology",
+    "MST": "School of Materials Science and Technology",
+    "Chemistry": "Department of Chemistry",
+    "Mathematics": "Department of Mathematical Sciences",
+    "Mathematical Sciences": "Department of Mathematical Sciences",
+    "Physics": "Department of Physics",
+    "Humanities": "Department of Humanistic Studies",
+    "Humanistic Studies": "Department of Humanistic Studies",
+}
 
 def scholarship_create(request):
     criteria = CriteriaMaster.objects.filter(is_active=True).order_by('display_order')
@@ -158,22 +219,34 @@ def student_profile(request):
         return redirect("eligible_scholarships")
 
     if request.method == "POST":
-        request.session["student_profile_data"] = {
-            "institute_email": student_data["email"],
-            "aadhaar_number": request.POST.get("aadhaar_number"),
-            "bank_name": request.POST.get("bank_name"),
-            "bank_branch": request.POST.get("bank_branch"),
-            "account_number": request.POST.get("account_number"),
-            "ifsc_code": request.POST.get("ifsc_code"),
-            "mobile_number": request.POST.get("mobile_number"),
-            "single_parent_child": request.POST.get("single_parent_child") == "Yes",
-            "jee_crl_rank": request.POST.get("jee_crl_rank"),
-            "jee_category_rank": request.POST.get("jee_category_rank"),
-            "annual_income": request.POST.get("annual_income"),
-            "class_12_percentage": request.POST.get("class_12_percentage"),
-        }
+        annual_income = request.POST.get("annual_income")
+        class_12_percentage = request.POST.get("class_12_percentage")
+        def _coerce_decimal(value):
+            if value in (None, ""): return None
+            try: return Decimal(str(value))
+            except (InvalidOperation, ValueError): return None
+        profile, created = StudentScholarshipProfile.objects.get_or_create(roll_no=roll_no, defaults={"institute_email": student_data["email"], "aadhaar_number": "", "bank_name": "", "bank_branch": "", "account_number": "", "ifsc_code": "", "mobile_number": "", "annual_income": Decimal("0")})
+        profile.student_name = student_data.get("name", "")
+        profile.department = student_data.get("department", "")
+        profile.programme = student_data.get("program", "")
+        profile.category = student_data.get("category", "")
+        profile.current_batch = student_data.get("batch", "")
+        profile.admission_batch = student_data.get("admission_batch", "")
+        profile.institute_email = student_data["email"]
+        profile.aadhaar_number = request.POST.get("aadhaar_number")
+        profile.bank_name = request.POST.get("bank_name")
+        profile.bank_branch = request.POST.get("bank_branch")
+        profile.account_number = request.POST.get("account_number")
+        profile.ifsc_code = request.POST.get("ifsc_code")
+        profile.mobile_number = request.POST.get("mobile_number")
+        profile.single_parent_child = request.POST.get("single_parent_child") == "Yes"
+        profile.jee_crl_rank = request.POST.get("jee_crl_rank")
+        profile.jee_category_rank = request.POST.get("jee_category_rank")
+        profile.annual_income = _coerce_decimal(annual_income)
+        profile.class_12_percentage = _coerce_decimal(class_12_percentage)
+        profile.save()
         return redirect("student_profile_documents")
-
+    
     profile_data = request.session.get("student_profile_data")
     if not profile_data and profile:
         profile_data = {
@@ -198,6 +271,149 @@ def student_profile(request):
     })
 
 
+def _profile_document_field_map():
+    return {
+        "bank_passbook_file": "bank_passbook",
+        "jee_certificate_file": "jee_certificate",
+        "category_certificate_file": "category_certificate",
+        "income_proof_file": "income_proof",
+        "class_12_marksheet_file": "class_12_marksheet",
+        "fee_receipt_odd_semester_file": "fee_receipt_odd_semester",
+        "fee_receipt_even_semester_file": "fee_receipt_even_semester",
+        "domicile_certificate_file": "domicile_certificate",
+    }
+
+
+def _profile_document_storage_name(roll_no, field_name):
+    purpose = _profile_document_field_map().get(field_name, field_name)
+    safe_roll = str(roll_no or "student").replace("/", "_").replace("\\", "_")
+    return f"{safe_roll}_{purpose}.pdf"
+
+
+def _profile_document_storage_path(roll_no, field_name):
+    return _profile_document_storage_name(roll_no, field_name)
+
+
+def _resolve_document_path(profile, field_name):
+    if not profile:
+        return None
+
+    value = getattr(profile, field_name, None)
+    candidates = []
+
+    if isinstance(value, str) and value:
+        candidates.append(value)
+    elif value is not None:
+        candidate_name = getattr(value, "name", None) or ""
+        if candidate_name:
+            candidates.append(candidate_name)
+
+    expected_name = _profile_document_storage_name(getattr(profile, "roll_no", None), field_name)
+    candidates.append(expected_name)
+    candidates.append(os.path.join("documents", expected_name))
+    candidates.append(os.path.join(settings.MEDIA_ROOT, expected_name))
+    candidates.append(os.path.join(settings.MEDIA_ROOT, "documents", expected_name))
+
+    seen = set()
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+
+        if os.path.isabs(candidate):
+            if os.path.exists(candidate):
+                return candidate
+            continue
+
+        normalized = candidate.replace("\\", "/")
+        if normalized.startswith("media/"):
+            normalized = normalized[len("media/"):]
+
+        if os.path.exists(normalized):
+            return normalized
+        if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized)):
+            return os.path.join(settings.MEDIA_ROOT, normalized)
+
+    return None
+
+
+def _render_document_to_pdf_bytes(uploaded_file, title):
+    if uploaded_file is None:
+        return None
+
+    if hasattr(uploaded_file, "read"):
+        raw_bytes = uploaded_file.read()
+        filename = getattr(uploaded_file, "name", "") or ""
+    else:
+        raw_bytes = uploaded_file
+        filename = ""
+
+    if filename.lower().endswith(".pdf") or str(filename).lower().endswith(".pdf"):
+        return raw_bytes
+
+    packet = BytesIO()
+    pdf = canvas.Canvas(packet, pagesize=A4)
+    width, height = A4
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(40, height - 40, title)
+
+    try:
+        img = ImageReader(BytesIO(raw_bytes))
+        img_w, img_h = img.getSize()
+        max_w = width - 80
+        max_h = height - 120
+        scale = min(max_w / img_w, max_h / img_h)
+        draw_w = img_w * scale
+        draw_h = img_h * scale
+        x = (width - draw_w) / 2
+        y = (height - 80 - draw_h)
+        pdf.drawImage(img, x, y, draw_w, draw_h, preserveAspectRatio=True, mask="auto")
+    except Exception:
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(40, height - 80, "Unable to render document preview.")
+
+    pdf.save()
+    packet.seek(0)
+    return packet.getvalue()
+
+
+def _save_profile_document(profile, field_name, uploaded_file):
+    if not uploaded_file:
+        return None
+
+    title = _profile_document_field_map().get(field_name, field_name).replace("_", " ").title()
+    pdf_bytes = _render_document_to_pdf_bytes(uploaded_file, title)
+    if not pdf_bytes:
+        return None
+
+    filename = _profile_document_storage_name(getattr(profile, "roll_no", None), field_name)
+    output_path = os.path.join(settings.MEDIA_ROOT, filename)
+
+    existing_value = getattr(profile, field_name, None)
+    if existing_value:
+        try:
+            if isinstance(existing_value, str):
+                candidate_paths = [
+                    os.path.join(settings.MEDIA_ROOT, existing_value),
+                    os.path.join(settings.MEDIA_ROOT, "documents", existing_value),
+                ]
+                for candidate in candidate_paths:
+                    if os.path.exists(candidate):
+                        os.remove(candidate)
+            else:
+                existing_value.delete(save=False)
+        except Exception:
+            pass
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "wb") as handle:
+        handle.write(pdf_bytes)
+
+    setattr(profile, field_name, filename)
+    profile.save(update_fields=[field_name])
+    return filename
+
+
 def student_profile_documents(request):
     student_data = request.session.get("student_data")
     if not student_data:
@@ -205,50 +421,30 @@ def student_profile_documents(request):
 
     roll_no = student_data["roll_no"]
     profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    profile_data = request.session.get("student_profile_data")
-    if not profile_data and profile:
-        profile_data = {
-            "institute_email": profile.institute_email,
-            "aadhaar_number": profile.aadhaar_number,
-            "bank_name": profile.bank_name,
-            "bank_branch": profile.bank_branch,
-            "account_number": profile.account_number,
-            "ifsc_code": profile.ifsc_code,
-            "mobile_number": profile.mobile_number,
-            "single_parent_child": profile.single_parent_child,
-            "jee_crl_rank": profile.jee_crl_rank,
-            "jee_category_rank": profile.jee_category_rank,
-            "annual_income": profile.annual_income,
-            "class_12_percentage": profile.class_12_percentage,
-        }
-
-    if not profile_data:
+    if not profile:
         return redirect("student_profile")
 
     if request.method == "POST":
-        defaults = {
-            **profile_data,
-            "bank_passbook_file": request.FILES.get("bank_passbook_file") or (profile.bank_passbook_file if profile else None),
-            "jee_certificate_file": request.FILES.get("jee_certificate_file") or (profile.jee_certificate_file if profile else None),
-            "category_certificate_file": request.FILES.get("category_certificate_file") or (profile.category_certificate_file if profile else None),
-            "income_proof_file": request.FILES.get("income_proof_file") or (profile.income_proof_file if profile else None),
-            "class_12_marksheet_file": request.FILES.get("class_12_marksheet_file") or (profile.class_12_marksheet_file if profile else None),
-            "fee_receipt_odd_semester_file": request.FILES.get("fee_receipt_odd_semester_file") or (profile.fee_receipt_odd_semester_file if profile else None),
-            "fee_receipt_even_semester_file": request.FILES.get("fee_receipt_even_semester_file") or (profile.fee_receipt_even_semester_file if profile else None),
-            "domicile_certificate_file": request.FILES.get("domicile_certificate_file") or (profile.domicile_certificate_file if profile else None),
-            "no_disciplinary_action": False,
-            "is_profile_complete": False,
-        }
-        StudentScholarshipProfile.objects.update_or_create(
-            roll_no=roll_no,
-            defaults=defaults,
-        )
+        profile = StudentScholarshipProfile.objects.get(roll_no=roll_no)
+
+        for field_name in [
+            "bank_passbook_file",
+            "jee_certificate_file",
+            "category_certificate_file",
+            "income_proof_file",
+            "class_12_marksheet_file",
+            "fee_receipt_odd_semester_file",
+            "fee_receipt_even_semester_file",
+            "domicile_certificate_file",
+        ]:
+            uploaded_file = request.FILES.get(field_name)
+            if uploaded_file:
+                _save_profile_document(profile, field_name, uploaded_file)
         return redirect("student_profile_save")
 
     return render(request, "student_profile_documents.html", {
         "student": student_data,
         "profile": profile,
-        "profile_data": profile_data,
         "bank_passbook": file_details(profile.bank_passbook_file) if profile else None,
         "jee_certificate": file_details(profile.jee_certificate_file) if profile else None,
         "category_certificate": file_details(profile.category_certificate_file) if profile else None,
@@ -281,7 +477,6 @@ def student_profile_save(request):
         profile.no_disciplinary_action = True
         profile.is_profile_complete = True
         profile.save()
-        request.session.pop("student_profile_data", None)
         messages.success(request, "Profile saved successfully.")
         return redirect("eligible_scholarships")
 
@@ -469,10 +664,16 @@ def file_details(field):
     if not field:
         return None
 
-    ext = os.path.splitext(field.name)[1].lower()
+    name = ""
+    if isinstance(field, str):
+        name = field
+    else:
+        name = getattr(field, "name", "") or ""
+
+    ext = os.path.splitext(name)[1].lower()
 
     return {
-        "filename": os.path.basename(field.name),
+        "filename": os.path.basename(name),
         "is_image": ext in [".jpg", ".jpeg", ".png"],
     }
 
@@ -616,41 +817,7 @@ def bulk_upload_scholarships(request):
         "Single Parent (Yes/No)": "Single Parent",
         "Disciplinary Action (Yes/No)": "Disciplinary Action",
     }
-    SEMESTER_MAP = {
-        "Sem-I": "Semester-I", "Sem-II": "Semester-II", "Sem-III": "Semester-III",
-        "Sem-IV": "Semester-IV", "Sem-V": "Semester-V", "Sem-VI": "Semester-VI",
-        "Sem-VII": "Semester-VII", "Sem-VIII": "Semester-VIII", "Sem-IX": "Semester-IX",
-        "Sem-X": "Semester-X", "Semester-I": "Semester-I", "Semester-II": "Semester-II",
-        "Semester-III": "Semester-III", "Semester-IV": "Semester-IV", "Semester-V": "Semester-V",
-        "Semester-VI": "Semester-VI", "Semester-VII": "Semester-VII", "Semester-VIII": "Semester-VIII",
-        "Semester-IX": "Semester-IX", "Semester-X": "Semester-X",
-    }
-    DEPARTMENT_MAP = {
-        "Architecture": "Department of Architecture, Planning and Design",
-        "Ceramic": "Department of Ceramic Engineering",
-        "Chemical": "Department of Chemical Engineering and Technology",
-        "Civil": "Department of Civil Engineering",
-        "Computer": "Department of Computer Science and Engineering",
-        "Computer Science": "Department of Computer Science and Engineering",
-        "Electrical": "Department of Electrical Engineering",
-        "Electronics": "Department of Electronics Engineering",
-        "Mechanical": "Department of Mechanical Engineering",
-        "Metallurgical": "Department of Metallurgical Engineering",
-        "Mining": "Department of Mining Engineering",
-        "Pharmaceutical": "Department of Pharmaceutical Engineering",
-        "Biochemical": "School of Biochemical Engineering",
-        "Biomedical": "School of Biomedical Engineering",
-        "Decision Science": "School of Decision Science and Engineering",
-        "DSE": "School of Decision Science and Engineering",
-        "Materials": "School of Materials Science and Technology",
-        "MST": "School of Materials Science and Technology",
-        "Chemistry": "Department of Chemistry",
-        "Mathematics": "Department of Mathematical Sciences",
-        "Mathematical Sciences": "Department of Mathematical Sciences",
-        "Physics": "Department of Physics",
-        "Humanities": "Department of Humanistic Studies",
-        "Humanistic Studies": "Department of Humanistic Studies",
-    }
+   
     for _, row in df.iterrows():
         scholarship = ScholarshipMaster.objects.create(
             scholarship_name=str(row["Name of Scholarship "]).strip(),
@@ -980,584 +1147,208 @@ def download_award_template(request):
         raise Http404("Template not found.")
     return FileResponse(open(template_path, "rb"), as_attachment=True, filename="Award_Scholarship_Template.xlsx",)
 
-def _safe_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _academic_session_from_date(dt_value):
-    if not dt_value:
-        return ""
-    start_year = dt_value.year if dt_value.month >= 7 else dt_value.year - 1
-    end_year = (start_year + 1) % 100
-    return f"{start_year}-{end_year:02d}"
-
-
-def _sanitize_filename(value):
-    cleaned = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in str(value))
-    cleaned = cleaned.strip("_")
-    return cleaned or "unknown"
-
-
-def _department_code(department_name):
-    text = (department_name or "").strip()
-    if not text:
-        return "GEN"
-
-    manual_map = {
-        "Department of Computer Science and Engineering": "CSE",
-        "Department of Electrical Engineering": "EEE",
-        "Department of Electronics Engineering": "ECE",
-        "Department of Mechanical Engineering": "ME",
-        "Department of Civil Engineering": "CE",
-        "Department of Chemical Engineering and Technology": "CH",
-        "Department of Mining Engineering": "MIN",
-        "Department of Metallurgical Engineering": "MT",
-        "Department of Ceramic Engineering": "CER",
-        "Department of Architecture, Planning and Design": "ARCH",
-        "School of Materials Science and Technology": "MST",
-        "School of Biomedical Engineering": "BME",
-        "School of Biochemical Engineering": "BCE",
-        "School of Decision Science and Engineering": "DSE",
-    }
-    if text in manual_map:
-        return manual_map[text]
-
-    normalized = text.replace("Department of", "").replace("School of", "").strip()
-    words = [w for w in normalized.replace("-", " ").split() if w.lower() not in {"and", "of", "the"}]
-    initials = "".join(word[0].upper() for word in words if word and word[0].isalnum())
-    if len(initials) >= 2:
-        return initials[:5]
-    return _sanitize_filename(normalized.upper())[:5] or "GEN"
-
-
-def _get_student_snapshot(roll_no):
-    student = {
-        "roll_no": roll_no,
-        "name": "Unknown",
-        "department": "",
-        "program": "",
-        "batch": "",
-        "category": "",
-        "email": "",
-        "gender": "",
-        "dob": "",
-        "admit_year": "",
-        "spi": 0.0,
-        "cpi": 0.0,
-        "photo_url": "",
-    }
-
-    try:
-        payload = get_student_details(roll_no)
-        parsed = json.loads(payload) if payload else {}
-        student.update(
-            {
-                "name": parsed.get("Name") or "Unknown",
-                "department": parsed.get("dept") or "",
-                "program": parsed.get("prg") or "",
-                "batch": parsed.get("Current Batch") or "",
-                "category": parsed.get("Category") or "",
-                "email": parsed.get("email") or "",
-                "gender": parsed.get("Gender") or "",
-                "dob": parsed.get("dob") or "",
-                "admit_year": parsed.get("admit_year") or "",
-            }
-        )
-        spi_cpi = get_spi_cpi(roll_no, "2025-26-2") or {}
-        student["spi"] = _safe_float(spi_cpi.get("spi"))
-        student["cpi"] = _safe_float(spi_cpi.get("cpi"))
-        student["photo_url"] = get_photo_url(roll_no) or ""
-    except Exception as exc:
-        print("application_management student lookup error:", exc)
-    return student
-
-
-def _student_docs(profile):
-    if not profile:
-        return []
-
-    return [
-        ("Bank Passbook", profile.bank_passbook_file),
-        ("JEE Certificate", profile.jee_certificate_file),
-        ("Category Certificate", profile.category_certificate_file),
-        ("Income Proof", profile.income_proof_file),
-        ("Class 12 Marksheet", profile.class_12_marksheet_file),
-        ("Fee Receipt Odd Semester", profile.fee_receipt_odd_semester_file),
-        ("Fee Receipt Even Semester", profile.fee_receipt_even_semester_file),
-        ("Domicile Certificate", profile.domicile_certificate_file),
-    ]
-
-
-def _pdf_from_lines(title, lines):
-    packet = BytesIO()
-    pdf = canvas.Canvas(packet, pagesize=A4)
-    width, height = A4
-    x = 40
-    y = height - 50
-
-    pdf.setFont("Helvetica-Bold", 15)
-    pdf.drawString(x, y, title)
-    y -= 24
-    pdf.setFont("Helvetica", 10)
-
-    for line in lines:
-        text = str(line)
-        chunks = [text[i : i + 110] for i in range(0, len(text), 110)] or [""]
-        for chunk in chunks:
-            if y <= 45:
-                pdf.showPage()
-                pdf.setFont("Helvetica", 10)
-                y = height - 45
-            pdf.drawString(x, y, chunk)
-            y -= 14
-
-    pdf.save()
-    packet.seek(0)
-    return packet.getvalue()
-
-
-def _document_as_pdf_bytes(file_field, title):
-    if not file_field:
-        return None
-
-    try:
-        file_field.open("rb")
-        raw = file_field.read()
-    except Exception:
-        return None
-    finally:
-        try:
-            file_field.close()
-        except Exception:
-            pass
-
-    filename = (file_field.name or "").lower()
-    if filename.endswith(".pdf"):
-        return raw
-
-    packet = BytesIO()
-    pdf = canvas.Canvas(packet, pagesize=A4)
-    width, height = A4
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(40, height - 40, title)
-
-    try:
-        img = ImageReader(BytesIO(raw))
-        img_w, img_h = img.getSize()
-        max_w = width - 80
-        max_h = height - 120
-        scale = min(max_w / img_w, max_h / img_h)
-        draw_w = img_w * scale
-        draw_h = img_h * scale
-        x = (width - draw_w) / 2
-        y = (height - 80 - draw_h)
-        pdf.drawImage(img, x, y, draw_w, draw_h, preserveAspectRatio=True, mask="auto")
-    except Exception:
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(40, height - 80, "Unable to render document preview.")
-
-    pdf.save()
-    packet.seek(0)
-    return packet.getvalue()
-
-
-def _build_student_pdf(roll_no, student, profile, applications, include_documents=False):
-    lines = [
-        f"Generated At: {timezone.now().strftime('%d-%m-%Y %H:%M')}",
-        "",
-        "Student Information",
-        f"Roll Number: {roll_no}",
-        f"Name: {student.get('name')}",
-        f"Department: {student.get('department')}",
-        f"Programme: {student.get('program')}",
-        f"Semester/Batch: {student.get('batch')}",
-        f"SPI: {student.get('spi')}",
-        f"CPI: {student.get('cpi')}",
-        f"Category: {student.get('category')}",
-    ]
-
-    if profile:
-        lines.extend(
-            [
-                f"Annual Income: {profile.annual_income}",
-                f"Mobile: {profile.mobile_number}",
-                f"Email: {profile.institute_email}",
-            ]
-        )
-
-    lines.extend(["", "Applied Scholarships"])
-    for app in applications:
-        lines.append(
-            f"- {app.scholarship.scholarship_name} | Status: {app.status} | Applied On: {app.application_date.strftime('%d-%m-%Y')}"
-        )
-
-    if include_documents:
-        lines.extend(["", "Uploaded Documents"])
-        for label, doc_field in _student_docs(profile):
-            if doc_field:
-                lines.append(f"- {label}: {os.path.basename(doc_field.name)}")
-
-    title = f"Scholarship Application {'Complete' if include_documents else 'Summary'} - {roll_no}"
-    return _pdf_from_lines(title, lines)
-
-
-def _build_student_documents_zip(roll_no, profile):
-    archive = BytesIO()
-    with ZipFile(archive, "w", ZIP_DEFLATED) as zipf:
-        for label, file_field in _student_docs(profile):
-            doc_pdf = _document_as_pdf_bytes(file_field, label)
-            if doc_pdf:
-                zipf.writestr(f"{_sanitize_filename(label)}.pdf", doc_pdf)
-    archive.seek(0)
-    return archive.getvalue()
-
-
-def _build_student_bundle_zip(roll_no, student, profile, applications):
-    archive = BytesIO()
-    with ZipFile(archive, "w", ZIP_DEFLATED) as zipf:
-        zipf.writestr("Summary.pdf", _build_student_pdf(roll_no, student, profile, applications, include_documents=False))
-        zipf.writestr("Complete_Application.pdf", _build_student_pdf(roll_no, student, profile, applications, include_documents=True))
-
-        for label, file_field in _student_docs(profile):
-            doc_pdf = _document_as_pdf_bytes(file_field, label)
-            if doc_pdf:
-                zipf.writestr(f"documents/{_sanitize_filename(label)}.pdf", doc_pdf)
-    archive.seek(0)
-    return archive.getvalue()
-
-
-def _merge_pdf_bytes(parts):
-    writer = PdfWriter()
-    for part in parts:
-        if not part:
-            continue
-        try:
-            reader = PdfReader(BytesIO(part))
-            for page in reader.pages:
-                writer.add_page(page)
-        except Exception as exc:
-            print("PDF merge error:", exc)
-
-    output = BytesIO()
-    writer.write(output)
-    return output.getvalue()
-
-
-def _build_student_combined_pdf(roll_no, student, profile, applications):
-    scholarship_lines = [
-        f"Generated At: {timezone.now().strftime('%d-%m-%Y %H:%M')}",
-        f"Roll Number: {roll_no}",
-        f"Name: {student.get('name') or 'Unknown'}",
-        f"Department: {student.get('department') or 'Unknown'}",
-        "",
-        "Applied Scholarships",
-    ]
-    for app in applications:
-        scholarship_lines.append(
-            f"- {app.scholarship.scholarship_name} | Status: {app.status} | Applied On: {app.application_date.strftime('%d-%m-%Y %H:%M')}"
-        )
-
-    profile_lines = [
-        "Academic Profile Information",
-        f"Name: {student.get('name') or 'Unknown'}",
-        f"Roll Number: {roll_no}",
-        f"Department: {student.get('department') or ''}",
-        f"Programme: {student.get('program') or ''}",
-        f"Semester/Batch: {student.get('batch') or ''}",
-        f"SPI: {student.get('spi')}",
-        f"CPI: {student.get('cpi')}",
-        f"Category: {student.get('category') or ''}",
-        f"Gender: {student.get('gender') or ''}",
-        f"Email: {student.get('email') or ''}",
-        f"Date of Birth: {student.get('dob') or ''}",
-        f"Admit Year: {student.get('admit_year') or ''}",
-        "",
-        "Scholarship Profile Form Details",
-    ]
-
-    if profile:
-        profile_lines.extend(
-            [
-                f"Institute Email: {profile.institute_email}",
-                f"Aadhaar Number: {profile.aadhaar_number}",
-                f"Mobile Number: {profile.mobile_number}",
-                f"Bank Name: {profile.bank_name}",
-                f"Bank Branch: {profile.bank_branch}",
-                f"Account Number: {profile.account_number}",
-                f"IFSC Code: {profile.ifsc_code}",
-                f"Single Parent Child: {'Yes' if profile.single_parent_child else 'No'}",
-                f"JEE CRL Rank: {profile.jee_crl_rank}",
-                f"JEE Category Rank: {profile.jee_category_rank}",
-                f"Annual Income: {profile.annual_income}",
-                f"Class 12 Percentage: {profile.class_12_percentage}",
-                f"No Disciplinary Action Declaration: {'Yes' if profile.no_disciplinary_action else 'No'}",
-                f"Profile Complete: {'Yes' if profile.is_profile_complete else 'No'}",
-            ]
-        )
-    else:
-        profile_lines.append("No scholarship profile form data found for this student.")
-
-    merged_parts = [
-        _pdf_from_lines(f"Scholarship Details - {roll_no}", scholarship_lines),
-        _pdf_from_lines(f"Complete Profile - {roll_no}", profile_lines),
-    ]
-
-    for label, file_field in _student_docs(profile):
-        doc_pdf = _document_as_pdf_bytes(file_field, label)
-        if doc_pdf:
-            merged_parts.append(doc_pdf)
-
-    return _merge_pdf_bytes(merged_parts)
-
-
-def _collect_student_rows(filters):
-    applications_qs = StudentScholarship.objects.select_related("scholarship").order_by("-application_date")
-    if filters["roll_no"]:
-        applications_qs = applications_qs.filter(roll_no__icontains=filters["roll_no"])
-    if filters["scholarship_id"]:
-        applications_qs = applications_qs.filter(scholarship_id=filters["scholarship_id"])
-
-    grouped = defaultdict(list)
-    for app in applications_qs:
-        grouped[app.roll_no].append(app)
-
-    student_cache = {}
-    rows = []
-    departments = set()
-    sessions = set()
-
-    for roll_no, apps in grouped.items():
-        if roll_no not in student_cache:
-            student_cache[roll_no] = _get_student_snapshot(roll_no)
-        student = student_cache[roll_no]
-
-        latest = max(apps, key=lambda a: a.application_date)
-        session = _academic_session_from_date(latest.application_date)
-        sessions.add(session)
-        department = student.get("department") or "Unknown"
-        departments.add(department)
-
-        if filters["department"] and department != filters["department"]:
-            continue
-        if filters["academic_session"] and session != filters["academic_session"]:
-            continue
-
-        statuses = {a.status for a in apps}
-        aggregate_status = "PENDING"
-        if "AWARDED" in statuses:
-            aggregate_status = "AWARDED"
-        elif statuses == {"REJECTED"}:
-            aggregate_status = "REJECTED"
-
-        if filters["status"] and aggregate_status != filters["status"]:
-            continue
-
-        rows.append(
-            {
-                "roll_no": roll_no,
-                "name": student.get("name") or "Unknown",
-                "department": department,
-                "scholarships_applied": len(apps),
-                "status": aggregate_status,
-                "academic_session": session,
-                "latest_applied_on": latest.application_date,
-            }
-        )
-
-    rows.sort(key=lambda item: item["latest_applied_on"], reverse=True)
-    return rows, sorted(departments), sorted(s for s in sessions if s), student_cache
-
-
 def application_management(request):
-    filters = {
-        "roll_no": request.GET.get("roll_no", "").strip(),
-        "department": request.GET.get("department", "").strip(),
-        "scholarship_id": request.GET.get("scholarship", "").strip(),
-        "academic_session": request.GET.get("academic_session", "").strip(),
-        "status": request.GET.get("status", "").strip(),
-    }
 
-    all_rows, departments, sessions, _ = _collect_student_rows(
-        {
-            "roll_no": "",
-            "department": "",
-            "scholarship_id": "",
-            "academic_session": "",
-            "status": "",
-        }
-    )
-    has_searched = request.GET.get("searched") == "1" or any(filters.values())
-    rows = _collect_student_rows(filters)[0] if has_searched else []
+    scholarships = ScholarshipMaster.objects.filter(
+        is_active=True
+    ).order_by("scholarship_name")
+    departments = sorted(set(DEPARTMENT_MAP.values()))
+    applications = StudentScholarship.objects.none()
+    searched = False
 
-    summary = {
-        "total": len(all_rows),
-        "pending": sum(1 for r in all_rows if r["status"] == "PENDING"),
-        "awarded": sum(1 for r in all_rows if r["status"] == "AWARDED"),
-        "rejected": sum(1 for r in all_rows if r["status"] == "REJECTED"),
-    }
+    roll_no = request.GET.get("roll_no", "").strip()
+    department = request.GET.get("department", "").strip()
+    scholarship_id = request.GET.get("scholarship", "").strip()
+    all_students = request.GET.get("all")
+
+    if roll_no:
+        searched = True
+        applications = StudentScholarship.objects.filter(roll_no=roll_no)
+
+    elif department:
+        searched = True
+        roll_nos = StudentScholarshipProfile.objects.filter(department=department).values_list("roll_no", flat=True)
+        applications = StudentScholarship.objects.filter(roll_no__in=roll_nos)
+
+    elif scholarship_id:
+        searched = True
+        applications = StudentScholarship.objects.filter(scholarship_id=scholarship_id)
+
+    elif all_students:
+        searched = True
+        applications = StudentScholarship.objects.all()
+
+    applications = applications.select_related("scholarship").order_by("roll_no","scholarship__scholarship_name")
+
+    applications = applications.select_related("scholarship")
+
+    student_rows = []
+    grouped = {}
+    for app in applications:
+        if app.roll_no not in grouped:
+            profile = StudentScholarshipProfile.objects.filter(roll_no=app.roll_no).first()
+            grouped[app.roll_no] = {
+                "roll_no": app.roll_no,
+                "student_name": profile.student_name if profile else "",
+                "department": profile.department if profile else "",
+                "programme": profile.programme if profile else "",
+                "applications": 0,
+            }
+        grouped[app.roll_no]["applications"] += 1
+    student_rows = list(grouped.values())
 
     return render(
         request,
         "application_management.html",
         {
-            "applications": rows,
-            "summary": summary,
+            "scholarships": scholarships,
             "departments": departments,
-            "academic_sessions": sessions,
-            "scholarships": ScholarshipMaster.objects.filter(is_active=True).order_by("scholarship_name"),
-            "selected": filters,
-            "has_searched": has_searched,
-        },
-    )
-
-
-def application_detail(request, roll_no):
-    applications = list(
-        StudentScholarship.objects.filter(roll_no=roll_no).select_related("scholarship").order_by("-application_date")
-    )
-    if not applications:
-        messages.error(request, "No scholarship applications found for the requested student.")
-        return redirect("application_management")
-
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    student = _get_student_snapshot(roll_no)
-    documents = []
-    for label, field in _student_docs(profile):
-        if field:
-            documents.append({"label": label, "filename": os.path.basename(field.name)})
-
-    return render(
-        request,
-        "application_detail.html",
-        {
-            "roll_no": roll_no,
-            "student": student,
-            "profile": profile,
-            "applications": applications,
-            "documents": documents,
-        },
-    )
-
-
-def download_application_summary_pdf(request, roll_no):
-    applications = list(StudentScholarship.objects.filter(roll_no=roll_no).select_related("scholarship").order_by("-application_date"))
-    if not applications:
-        raise Http404("No applications found for this student.")
-
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    student = _get_student_snapshot(roll_no)
-    pdf_bytes = _build_student_pdf(roll_no, student, profile, applications, include_documents=False)
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="summary_{_sanitize_filename(roll_no)}.pdf"'
-    return response
-
-
-def download_application_complete_pdf(request, roll_no):
-    applications = list(StudentScholarship.objects.filter(roll_no=roll_no).select_related("scholarship").order_by("-application_date"))
-    if not applications:
-        raise Http404("No applications found for this student.")
-
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    student = _get_student_snapshot(roll_no)
-    pdf_bytes = _build_student_pdf(roll_no, student, profile, applications, include_documents=True)
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="complete_{_sanitize_filename(roll_no)}.pdf"'
-    return response
-
-
-def download_application_documents_zip(request, roll_no):
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    if not profile:
-        raise Http404("No profile documents found for this student.")
-
-    zip_bytes = _build_student_documents_zip(roll_no, profile)
-    response = HttpResponse(zip_bytes, content_type="application/zip")
-    response["Content-Disposition"] = f'attachment; filename="documents_{_sanitize_filename(roll_no)}.zip"'
-    return response
-
-
-def download_application_bundle(request, roll_no):
-    applications = list(StudentScholarship.objects.filter(roll_no=roll_no).select_related("scholarship").order_by("-application_date"))
-    if not applications:
-        raise Http404("No applications found for this student.")
-
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    student = _get_student_snapshot(roll_no)
-    zip_bytes = _build_student_bundle_zip(roll_no, student, profile, applications)
-    response = HttpResponse(zip_bytes, content_type="application/zip")
-    response["Content-Disposition"] = f'attachment; filename="application_{_sanitize_filename(roll_no)}.zip"'
-    return response
-
-
-def download_application_scope_zip(request):
-    scope = request.GET.get("scope", "").strip().lower()
-    roll_no = request.GET.get("roll_no", "").strip()
-    department = request.GET.get("department", "").strip()
-    scholarship_id = request.GET.get("scholarship", "").strip()
-    academic_session = request.GET.get("academic_session", "").strip()
-
-    if scope == "student" and not roll_no:
-        messages.error(request, "Please provide a roll number for student-level download.")
-        return redirect("application_management")
-    if scope == "department" and not department:
-        messages.error(request, "Please select a department for department-level download.")
-        return redirect("application_management")
-
-    if scope == "search":
-        filters = {
+            "student_rows": student_rows,
+            "searched": searched,
             "roll_no": roll_no,
             "department": department,
             "scholarship_id": scholarship_id,
-            "academic_session": academic_session,
-            "status": request.GET.get("status", "").strip(),
-        }
-        rows, _, _, student_cache = _collect_student_rows(filters)
-    else:
-        filters = {
-            "roll_no": roll_no if scope == "student" else "",
-            "department": department if scope == "department" else "",
-            "scholarship_id": scholarship_id,
-            "academic_session": academic_session,
-            "status": "",
-        }
-        rows, _, _, student_cache = _collect_student_rows(filters)
+            "all_students": all_students,
+        },
+    )
 
-    if scope == "student" and roll_no:
-        rows = [r for r in rows if r["roll_no"] == roll_no]
+def application_detail(request, roll_no):
+    profile = get_object_or_404(StudentScholarshipProfile, roll_no=roll_no)
+    applications = (
+        StudentScholarship.objects.filter(roll_no=roll_no)
+        .select_related("scholarship")
+        .order_by("scholarship__scholarship_name")
+    )
+    return render(request, "application_detail.html", {"profile": profile, "applications": applications})
 
-    if scope not in {"student", "department", "institute", "search"}:
-        messages.error(request, "Invalid scope selected for download.")
+def download_application_pdf(request, roll_no):
+    profile = get_object_or_404(StudentScholarshipProfile, roll_no=roll_no)
+    applications = (
+        StudentScholarship.objects.filter(roll_no=roll_no)
+        .select_related("scholarship")
+        .order_by("scholarship__scholarship_name")
+    )
+    return FileResponse(build_application_pdf(profile, applications), as_attachment=True, filename=f"{roll_no}_application.pdf")
+
+
+def build_application_pdf(profile, applications):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer,pagesize=A4,rightMargin=1.5 * cm,leftMargin=1.5 * cm,topMargin=1.5 * cm, bottomMargin=1.5 * cm, )
+    styles = getSampleStyleSheet()
+    heading = styles["Heading1"]
+    heading.alignment = TA_CENTER
+    subheading = styles["Heading2"]
+    story = []
+
+    story.extend([
+        Paragraph("Scholarship Application Details", heading),
+        Paragraph("<b>Indian Institute of Technology (BHU), Varanasi</b>", heading),
+        Paragraph("<b>Scholarship Application</b>", heading),
+        Spacer(1, 0.5 * cm),
+    ])
+
+    student_table = [
+        ["Roll Number", profile.roll_no],
+        ["Name", profile.student_name],
+        ["Department", profile.department],
+        ["Programme", profile.programme],
+        ["Category", profile.category],
+        ["Current Batch", profile.current_batch],
+    ]
+    table = Table(student_table, colWidths=[5 * cm, 11 * cm])
+    table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.extend([table, Spacer(1, 0.5 * cm), Paragraph("<b>Scholarships Applied</b>", subheading)])
+
+    scholarship_rows = [["Scholarship", "Status", "Applied On"]]
+    for app in applications:
+        scholarship_rows.append([
+            app.scholarship.scholarship_name,
+            app.status,
+            app.application_date.strftime("%d-%m-%Y"),
+        ])
+    table = Table(scholarship_rows, colWidths=[9 * cm, 3 * cm, 4 * cm])
+    table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+    ]))
+    story.extend([table, PageBreak(), Paragraph("<b>Student Scholarship Profile</b>", subheading)])
+
+    profile_rows = [
+        ["Institute Email", profile.institute_email],
+        ["Aadhaar Number", profile.aadhaar_number],
+        ["Annual Income", profile.annual_income],
+        ["Bank Name", profile.bank_name],
+        ["Branch", profile.bank_branch],
+        ["Account Number", profile.account_number],
+        ["IFSC", profile.ifsc_code],
+        ["Mobile", profile.mobile_number],
+        ["Single Parent Child", "Yes" if profile.single_parent_child else "No"],
+        ["JEE CRL Rank", profile.jee_crl_rank],
+        ["JEE Category Rank", profile.jee_category_rank],
+        ["Class XII Percentage", profile.class_12_percentage],
+    ]
+    table = Table(profile_rows, colWidths=[6 * cm, 10 * cm])
+    table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("BACKGROUND", (0,0), (0,-1), colors.lightgrey),
+        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ("LEFTPADDING", (0,0), (-1,-1), 8),
+    ]))
+    story.append(table)
+
+    doc.build(story)
+    buffer.seek(0)
+
+    writer = PdfWriter()
+    reader = PdfReader(buffer)
+    for page in reader.pages:
+        writer.add_page(page)
+    for _, field in DOCUMENT_FIELDS:
+        file = getattr(profile, field)
+        if not file:
+            continue
+        try:
+            for page in PdfReader(file.path).pages:
+                writer.add_page(page)
+        except Exception:
+            pass
+
+    final_pdf = BytesIO()
+    writer.write(final_pdf)
+    final_pdf.seek(0)
+    return final_pdf
+
+def download_applications(request):
+    print("##############Roll numbers received:", request.POST.getlist("roll_nos"))
+    if request.method != "POST":
         return redirect("application_management")
 
-    if not rows:
-        messages.warning(request, "No matching applications available for download.")
+    roll_nos = request.POST.getlist("roll_nos")
+    if not roll_nos:
         return redirect("application_management")
+    if len(roll_nos) == 1:
+        return download_application_pdf(request, roll_nos[0])
 
-    archive = BytesIO()
-    with ZipFile(archive, "w", ZIP_DEFLATED) as zipf:
-        for row in rows:
-            row_roll = row["roll_no"]
-            apps = list(
-                StudentScholarship.objects.filter(roll_no=row_roll).select_related("scholarship").order_by("-application_date")
+    temp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    with zipfile.ZipFile(temp.name, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for roll_no in roll_nos:
+            profile = StudentScholarshipProfile.objects.get(roll_no=roll_no)
+            applications = (
+                StudentScholarship.objects.filter(roll_no=roll_no)
+                .select_related("scholarship")
+                .order_by("scholarship__scholarship_name")
             )
-            profile = StudentScholarshipProfile.objects.filter(roll_no=row_roll).first()
-            student = student_cache.get(row_roll) or _get_student_snapshot(row_roll)
-            department_code = _department_code(student.get("department"))
-            filename = f"{department_code}_{_sanitize_filename(row_roll)}.pdf"
-            merged_pdf = _build_student_combined_pdf(row_roll, student, profile, apps)
-            zipf.writestr(f"applications/{filename}", merged_pdf)
+            pdf = build_application_pdf(profile, applications)
+            zipf.writestr(f"{roll_no}_application.pdf", pdf.getvalue())
 
-    archive.seek(0)
-    ts = timezone.now().strftime("%Y%m%d_%H%M")
-    label = scope
-    if scope == "department":
-        label = _sanitize_filename(department or "department")
-    if scope == "student":
-        label = _sanitize_filename(roll_no or "student")
-
-    response = HttpResponse(archive.getvalue(), content_type="application/zip")
-    response["Content-Disposition"] = f'attachment; filename="applications_{label}_{ts}.zip"'
-    return response
+    temp.seek(0)
+    return FileResponse(open(temp.name, "rb"), as_attachment=True, filename="Scholarship_Applications.zip")

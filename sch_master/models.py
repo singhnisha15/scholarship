@@ -249,7 +249,40 @@ class StudentScholarshipProfile(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True
     )
+    student_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default=""
+    )
 
+    department = models.CharField(
+        max_length=200,
+        blank=True,
+        default=""
+    )
+
+    programme = models.CharField(
+        max_length=100,
+        blank=True,
+        default=""
+    )
+
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        default=""
+    )
+
+    current_batch = models.CharField(
+        max_length=150,
+        blank=True,
+        default=""
+    )
+    admission_batch = models.CharField(
+        max_length=20,
+        blank=True,
+        default=""
+    )
     class Meta:
         db_table = "student_scholarship_profile"
 

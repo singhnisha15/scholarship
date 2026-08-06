@@ -46,33 +46,18 @@ urlpatterns = [
         name="application_management",
     ),
     path(
-        "scholarship/application-management/download/",
-        views.download_application_scope_zip,
-        name="download_application_scope_zip",
+        "scholarship/application/download-all/",
+        views.download_applications,
+        name="download_applications",
     ),
     path(
-        "scholarship/application-management/student/<str:roll_no>/",
+        "scholarship/application/<str:roll_no>/download/",
+        views.download_application_pdf,
+        name="download_application_pdf",
+    ),
+    path(
+        "scholarship/application/<str:roll_no>/",
         views.application_detail,
         name="application_detail",
     ),
-    path(
-        "scholarship/application-management/student/<str:roll_no>/summary-pdf/",
-        views.download_application_summary_pdf,
-        name="download_application_summary_pdf",
-    ),
-    path(
-        "scholarship/application-management/student/<str:roll_no>/complete-pdf/",
-        views.download_application_complete_pdf,
-        name="download_application_complete_pdf",
-    ),
-    path(
-        "scholarship/application-management/student/<str:roll_no>/documents-zip/",
-        views.download_application_documents_zip,
-        name="download_application_documents_zip",
-    ),
-    path(
-        "scholarship/application-management/student/<str:roll_no>/bundle/",
-        views.download_application_bundle,
-        name="download_application_bundle",
-    ),
-    ]
+]
