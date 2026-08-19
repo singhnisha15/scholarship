@@ -70,9 +70,9 @@ DEPARTMENT_MAP = {
     "Pharmaceutical": "Department of Pharmaceutical Engineering & Technology",
     "Biochemical": "School of Biochemical Engineering",
     "Biomedical": "School of Biomedical Engineering",
-    "Decision Science": "School of Decision Science and Engineering",
-    "DSE": "School of Decision Science and Engineering",
-    "Materials": "NC Jain School of Decision Sciences & Engineering",
+    "Decision Science": "NC Jain School of Decision Sciences & Engineering",
+    "DSE": "NC Jain School of Decision Sciences & Engineering",
+    "Materials": "School of Materials Science and Technology",
     "MST": "School of Materials Science and Technology",
     "Chemistry": "Department of Chemistry",
     "Mathematics": "Department of Mathematical Sciences",
@@ -194,19 +194,18 @@ def google_login(request):
 
     if email.lower() in office_users:
         request.session["home_url"] = "scholarship_dashboard"
-        messages.success(request, "Signed in as staff.")
+        #messages.success(request, "Signed in as staff.")
         return redirect("scholarship_dashboard")
 
     request.session["home_url"] = "student_dashboard"
-    messages.success(request, "Signed in as student.")
+    #messages.success(request, "Signed in as student.")
     return redirect("student_dashboard")
 
 
 def logout_view(request):
     logout(request)
     request.session.flush()
-    messages.success(request,"You have been logged out.")
-
+    #messages.success(request,"You have been logged out.")
     return redirect("common_login")
 
 def student_profile(request):
@@ -475,10 +474,7 @@ def student_profile_save(request):
 
     if request.method == "POST":
         if request.POST.get("no_disciplinary_action") != "on":
-            messages.error(
-                request,
-                "You must confirm that no disciplinary action has been taken against you. If any information provided is found to be invalid, disciplinary action may be taken.",
-            )
+            messages.error(request, "You must confirm that no disciplinary action has been taken against you. If any information provided is found to be invalid, disciplinary action may be taken.")
             return redirect("student_profile_save")
 
         profile.no_disciplinary_action = True
@@ -941,16 +937,12 @@ def apply_scholarship(request, scholarship_id):
     roll_no = student["roll_no"]
 
     # Student is already awarded scholarship
-    if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED"
-    ).exists():    
-        messages.warning(request,
-            "You have already applied for a scholarship. Multiple applications are not permitted.")
+    if StudentScholarship.objects.filter(roll_no=roll_no, status="AWARDED").exists():    
+        messages.warning(request, "You have already applied for a scholarship. Multiple applications are not permitted.")
         return redirect("student_dashboard")
     # Student has already applied for the same scholarship
-    if StudentScholarship.objects.filter(roll_no=roll_no, scholarship_id=scholarship_id,
-        status="APPLIED").exists():
-        messages.warning(request,
-            "You have already applied for this scholarship. Multiple applications are not permitted.")
+    if StudentScholarship.objects.filter(roll_no=roll_no, scholarship_id=scholarship_id, status="APPLIED").exists():
+        messages.warning(request, "You have already applied for this scholarship. Multiple applications are not permitted.")
         return redirect("student_dashboard")
     scholarship = get_object_or_404(ScholarshipMaster, scholarship_id=scholarship_id,
         is_active=True)
@@ -958,8 +950,7 @@ def apply_scholarship(request, scholarship_id):
     StudentScholarship.objects.create(roll_no=roll_no, scholarship=scholarship,
         status="APPLIED")
 
-    messages.success(request,
-        "Your scholarship application has been submitted successfully.")
+    messages.success(request, "Your scholarship application has been submitted successfully.")
 
     return redirect("student_dashboard")
 

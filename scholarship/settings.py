@@ -147,7 +147,7 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SITE_ID = 2
+SITE_ID = 4
 
 # ---------------------------------------------------------
 # django-allauth / Google Authentication
@@ -156,6 +156,7 @@ SITE_ID = 2
 LOGIN_REDIRECT_URL = "/scholarship/student/post-login/"
 LOGOUT_REDIRECT_URL = "/"
 SOCIALACCOUNT_ADAPTER = ("sch_master.adapters.ScholarshipSocialAccountAdapter")
+ACCOUNT_ADAPTER = "sch_master.account_adapter.ScholarshipAccountAdapter"
 SOCIALACCOUNT_AUTO_SIGNUP = True
 
 SOCIALACCOUNT_EMAIL_REQUIRED = True

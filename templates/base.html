@@ -74,14 +74,6 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    const alerts = document.querySelectorAll(".alert");
-    if (alerts.length) {
-      const text = Array.from(alerts)
-        .map(el => el.textContent.trim())
-        .join("\n\n");
-      alert(text);
-    }
-
     document.querySelectorAll('[data-confirm]').forEach(function(element) {
       const message = element.getAttribute('data-confirm');
       if (!message) return;
