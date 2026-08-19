@@ -260,3 +260,23 @@ small { display: block; margin-top: 5px; color: #777; }
 .btn-save {
     display: inline-block;
 }
+
+
+.login-support {
+    background: #212529;
+    color: white;
+    text-align: center;
+    padding: 14px 10px;
+    margin-top: 30px;
+    font-size: 15px;
+}
+
+.login-support a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-support a:hover {
+    text-decoration: underline;
+}
