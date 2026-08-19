@@ -33,6 +33,8 @@ from pypdf import PdfReader, PdfWriter
 import zipfile
 import tempfile
 from django.http import FileResponse
+import re
+from django.contrib.auth import logout
 
 DOCUMENT_FIELDS = [
     ("Bank Passbook", "bank_passbook_file"),
@@ -70,7 +72,7 @@ DEPARTMENT_MAP = {
     "Biomedical": "School of Biomedical Engineering",
     "Decision Science": "School of Decision Science and Engineering",
     "DSE": "School of Decision Science and Engineering",
-    "Materials": "School of Materials Science and Technology",
+    "Materials": "NC Jain School of Decision Sciences & Engineering",
     "MST": "School of Materials Science and Technology",
     "Chemistry": "Department of Chemistry",
     "Mathematics": "Department of Mathematical Sciences",
@@ -167,7 +169,9 @@ def edit_scholarship(request, pk):
     return render(request, 'scholarship_create.html', {'criteria': criteria, 'scholarship': scholarship})
 
 def common_login(request):
-    print("************ common_login() called ************")
+    print("************ common_login() called ************", flush=True)
+    if request.user.is_authenticated:
+        return redirect("post_login")
     return render(request, "common_login.html")
 
 def google_login(request):
@@ -199,8 +203,10 @@ def google_login(request):
 
 
 def logout_view(request):
+    logout(request)
     request.session.flush()
-    messages.success(request, "You have been logged out.")
+    messages.success(request,"You have been logged out.")
+
     return redirect("common_login")
 
 def student_profile(request):
@@ -231,6 +237,7 @@ def student_profile(request):
         profile.programme = student_data.get("program", "")
         profile.category = student_data.get("category", "")
         profile.current_batch = student_data.get("batch", "")
+        profile.current_semester = student_data.get("current_semester", "")
         profile.admission_batch = student_data.get("admission_batch", "")
         profile.institute_email = student_data["email"]
         profile.aadhaar_number = request.POST.get("aadhaar_number")
@@ -559,11 +566,27 @@ def is_scholarship_eligible(scholarship, student, profile):
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
+        elif name == "Current Semester":
+                    allowed = json.loads(value)
+                    student_semester = student.get("current_semester") or extract_current_semester(student.get("batch", ""))
+                    print(f"Current Semester => Student={student_semester} Allowed={allowed}")
+                    if student_semester not in allowed:
+                        reason = f"Current semester criteria mismatch: student semester '{student_semester}' is not in {allowed}."
+                        reasons.append(reason)
+                        print(f"Result => NOT ELIGIBLE: {reason}")
+                        return False, reasons
         elif name == "Department":
             allowed = json.loads(value)
             print(f"Department => Student={student['department']} Allowed={allowed}")
             if student["department"] not in allowed:
                 reason = f"Department criteria mismatch: '{student['department']}' is not in {allowed}."
+                reasons.append(reason)
+                print(f"Result => NOT ELIGIBLE: {reason}")
+                return False, reasons        
+        elif name == "Income":
+            print(f"Income => Student={profile.annual_income} Limit={value}")
+            if float(profile.annual_income) > float(value):
+                reason = f"Income criteria mismatch: annual income {profile.annual_income} exceeds the limit {value}."
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
@@ -573,10 +596,13 @@ def is_scholarship_eligible(scholarship, student, profile):
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
-        elif name == "Income":
-            print(f"Income => Student={profile.annual_income} Limit={value}")
-            if float(profile.annual_income) > float(value):
-                reason = f"Income criteria mismatch: annual income {profile.annual_income} exceeds the limit {value}."
+        elif name == "Age":
+            dob = datetime.strptime(student["dob"], "%d-%m-%Y")
+            age = datetime.today().year - dob.year
+            age_limit = int(float(value))
+            print(f"Age => Student={age} Limit={value}")
+            if age >= age_limit:
+                reason = f"Age criteria mismatch: student age {age} is not below the required limit {age_limit}."
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
@@ -588,13 +614,12 @@ def is_scholarship_eligible(scholarship, student, profile):
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
-        elif name == "Age":
-            dob = datetime.strptime(student["dob"], "%d-%m-%Y")
-            age = datetime.today().year - dob.year
-            age_limit = int(float(value))
-            print(f"Age => Student={age} Limit={value}")
-            if age >= age_limit:
-                reason = f"Age criteria mismatch: student age {age} is not below the required limit {age_limit}."
+        elif name == "Disciplinary Action":
+            required = value == "Yes"
+            student_has_disciplinary_action = not getattr(profile, "no_disciplinary_action", False)
+            print(f"Disciplinary Action => Student={student_has_disciplinary_action} Required={required}")
+            if student_has_disciplinary_action != required:
+                reason = f"Disciplinary-action criteria mismatch: required '{required}', got '{student_has_disciplinary_action}'."
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
@@ -632,20 +657,13 @@ def is_scholarship_eligible(scholarship, student, profile):
                 reasons.append(reason)
                 print(f"Result => NOT ELIGIBLE: {reason}")
                 return False, reasons
-        elif name == "Disciplinary Action":
-            required = value == "Yes"
-            student_has_disciplinary_action = not getattr(profile, "no_disciplinary_action", False)
-            print(f"Disciplinary Action => Student={student_has_disciplinary_action} Required={required}")
-            if student_has_disciplinary_action != required:
-                reason = f"Disciplinary-action criteria mismatch: required '{required}', got '{student_has_disciplinary_action}'."
-                reasons.append(reason)
-                print(f"Result => NOT ELIGIBLE: {reason}")
-                return False, reasons
     print(f"Result => ELIGIBLE")
     return True, reasons
             
 
 def eligible_scholarships(request):
+    if not request.user.is_authenticated: return redirect("common_login")
+    if request.session.get("user_type") != "student": return redirect("common_login")
     student = request.session.get("student_data")
     if not student: return redirect("common_login")
     profile = StudentScholarshipProfile.objects.get(roll_no=student["roll_no"])
@@ -677,15 +695,21 @@ def file_details(field):
         "is_image": ext in [".jpg", ".jpeg", ".png"],
     }
 
+def normalize_institute_email(email):
+    return (email or "").strip().lower().replace("@itbhu.ac.in","@iitbhu.ac.in")
+
 def student_dashboard(request):
     email = request.session.get("email")
-    if not email:
-        return redirect("common_login")
-
-    print("Email =", email)
-
+    if not email: return redirect("common_login")
+    if not request.user.is_authenticated: return redirect("common_login")
+    if request.session.get("user_type") != "student": return redirect("common_login")
     student = request.session.get("student_data")
-    if not student or student.get("email") != email:
+    academic_api_data = request.session.get("academic_api_data")
+
+    google_email = normalize_institute_email(email)
+    api_email = normalize_institute_email(academic_api_data.get("email"))
+
+    if not student or google_email != api_email:
         student_payload = get_student_details(email)
         print(type(student_payload))
         print("Student from API =", student_payload)
@@ -714,6 +738,10 @@ def student_dashboard(request):
             except (TypeError, ValueError):
                 return 0.0
 
+        current_batch = (student_api_data.get("Current Batch") or "").strip()
+        admission_batch = (student_api_data.get("admit_year") or "").strip()
+        current_semester = extract_current_semester(current_batch)
+
         student = {
             "roll_no": (student_api_data.get("Roll No") or "").strip(),
             "name": student_api_data.get("Name"),
@@ -722,6 +750,9 @@ def student_dashboard(request):
             "program": student_api_data.get("prg"),
             "department": student_api_data.get("dept"),
             "batch": student_api_data.get("Current Batch"),
+            "batch": current_batch,
+            "current_semester": current_semester,
+            "admit_year": admission_batch,
             "email": (student_api_data.get("email") or "").strip(),
             "contact_no": student_api_data.get("contact_no"),
             "admit_year": student_api_data.get("admit_year"),
@@ -1233,68 +1264,55 @@ def download_application_pdf(request, roll_no):
 
 def build_application_pdf(profile, applications):
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer,pagesize=A4,rightMargin=1.5 * cm,leftMargin=1.5 * cm,topMargin=1.5 * cm, bottomMargin=1.5 * cm, )
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, topMargin=1.5*cm, bottomMargin=1.5*cm)
     styles = getSampleStyleSheet()
-    heading = styles["Heading1"]
+    heading, subheading = styles["Heading1"], styles["Heading2"]
     heading.alignment = TA_CENTER
-    subheading = styles["Heading2"]
-    story = []
-
-    story.extend([
+    story = [
         Paragraph("Scholarship Application Details", heading),
         Paragraph("<b>Indian Institute of Technology (BHU), Varanasi</b>", heading),
         Paragraph("<b>Scholarship Application</b>", heading),
-        Spacer(1, 0.5 * cm),
-    ])
+        Spacer(1, 0.5*cm),
+    ]
 
     student_table = [
-        ["Roll Number", profile.roll_no],
-        ["Name", profile.student_name],
-        ["Department", profile.department],
-        ["Programme", profile.programme],
-        ["Category", profile.category],
-        ["Current Batch", profile.current_batch],
+        ["Roll Number", profile.roll_no], ["Name", profile.student_name],
+        ["Department", profile.department], ["Programme", profile.programme],
+        ["Category", profile.category], ["Current Batch", profile.current_batch],
     ]
-    table = Table(student_table, colWidths=[5 * cm, 11 * cm])
+    table = Table(student_table, colWidths=[5*cm, 11*cm])
     table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (0,-1), colors.lightgrey),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
     ]))
-    story.extend([table, Spacer(1, 0.5 * cm), Paragraph("<b>Scholarships Applied</b>", subheading)])
+    story.extend([table, Spacer(1, 0.5*cm), Paragraph("<b>Scholarships Applied</b>", subheading)])
 
     scholarship_rows = [["Scholarship", "Status", "Applied On"]]
-    for app in applications:
-        scholarship_rows.append([
-            app.scholarship.scholarship_name,
-            app.status,
-            app.application_date.strftime("%d-%m-%Y"),
-        ])
-    table = Table(scholarship_rows, colWidths=[9 * cm, 3 * cm, 4 * cm])
+    scholarship_rows.extend([
+        [app.scholarship.scholarship_name, app.status, app.application_date.strftime("%d-%m-%Y")]
+        for app in applications
+    ])
+    table = Table(scholarship_rows, colWidths=[9*cm, 3*cm, 4*cm])
     table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
     ]))
     story.extend([table, PageBreak(), Paragraph("<b>Student Scholarship Profile</b>", subheading)])
 
     profile_rows = [
-        ["Institute Email", profile.institute_email],
-        ["Aadhaar Number", profile.aadhaar_number],
-        ["Annual Income", profile.annual_income],
-        ["Bank Name", profile.bank_name],
-        ["Branch", profile.bank_branch],
-        ["Account Number", profile.account_number],
-        ["IFSC", profile.ifsc_code],
-        ["Mobile", profile.mobile_number],
+        ["Institute Email", profile.institute_email], ["Aadhaar Number", profile.aadhaar_number],
+        ["Annual Income", profile.annual_income], ["Bank Name", profile.bank_name],
+        ["Branch", profile.bank_branch], ["Account Number", profile.account_number],
+        ["IFSC", profile.ifsc_code], ["Mobile", profile.mobile_number],
         ["Single Parent Child", "Yes" if profile.single_parent_child else "No"],
-        ["JEE CRL Rank", profile.jee_crl_rank],
-        ["JEE Category Rank", profile.jee_category_rank],
+        ["JEE CRL Rank", profile.jee_crl_rank], ["JEE Category Rank", profile.jee_category_rank],
         ["Class XII Percentage", profile.class_12_percentage],
     ]
-    table = Table(profile_rows, colWidths=[6 * cm, 10 * cm])
+    table = Table(profile_rows, colWidths=[6*cm, 10*cm])
     table.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (0,-1), colors.lightgrey),
@@ -1308,24 +1326,21 @@ def build_application_pdf(profile, applications):
     doc.build(story)
     buffer.seek(0)
 
-    writer = PdfWriter()
-    reader = PdfReader(buffer)
+    writer, reader = PdfWriter(), PdfReader(buffer)
     for page in reader.pages:
         writer.add_page(page)
     for _, field in DOCUMENT_FIELDS:
         file = getattr(profile, field)
-        if not file:
-            continue
-        try:
-            for page in PdfReader(file.path).pages:
-                writer.add_page(page)
-        except Exception:
-            pass
+        if file:
+            try:
+                for page in PdfReader(file.path).pages:
+                    writer.add_page(page)
+            except Exception:
+                pass
 
     final_pdf = BytesIO()
     writer.write(final_pdf)
-    final_pdf.seek(0)
-    return final_pdf
+    return final_pdf.seek(0) or final_pdf
 
 def download_applications(request):
     print("##############Roll numbers received:", request.POST.getlist("roll_nos"))
@@ -1352,3 +1367,41 @@ def download_applications(request):
 
     temp.seek(0)
     return FileResponse(open(temp.name, "rb"), as_attachment=True, filename="Scholarship_Applications.zip")
+
+
+def extract_current_semester(current_batch):
+    """Convert the academic API's Current Batch string into the normalized semester format used by the scholarship DB."""
+    if not current_batch: return ""
+    text = str(current_batch).strip()
+    match = re.search(r'\bSemester[-\s]*([IVX]+)\b|([IVX]+)[-\s]*Semester\b', text, re.IGNORECASE)
+    return f"Semester-{(match.group(1) or match.group(2)).upper()}" if match else ""
+
+def post_login(request):
+    """Entry point after successful Google authentication."""
+    print("\n========== POST LOGIN DEBUG ==========", flush=True)
+    print("Authenticated:", request.user.is_authenticated, flush=True)
+    print("User:", request.user, flush=True)
+    print("User email:", request.user.email, flush=True)
+    print("Session:", dict(request.session), flush=True)
+    print("user_type:", request.session.get("user_type"), flush=True)
+    print("email:", request.session.get("email"), flush=True)
+    print("=======================================\n", flush=True)
+
+    if not request.user.is_authenticated:
+        return redirect("common_login")
+    email = (request.user.email or request.session.get("email", "")).strip().lower()
+    if not email:
+        messages.error(request, "Unable to determine your authenticated email address.")
+        return redirect("common_login")
+
+    request.session["email"] = email
+    user_type = request.session.get("user_type")
+
+    if user_type == "staff":
+        return redirect("scholarship_dashboard")
+    if user_type == "student":
+        return redirect("student_dashboard")
+    # Safety fallback: do not allow unauthenticated Google users into student portal
+    request.session.flush()
+    messages.error(request, "Your account could not be verified for this portal.")
+    return redirect("common_login")

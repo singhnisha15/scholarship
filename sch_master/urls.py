@@ -1,16 +1,17 @@
-from django.urls import path
-
+from django.urls import path, include
 from sch_master import views
 from .views import scholarship_create
 
 urlpatterns = [
-    path("create/", scholarship_create, name="scholarship_create"),
-    path("google_login/", views.google_login, name="google_login"),
+    path("", views.common_login, name="common_login"),
+    #path("accounts/", include("allauth.urls")),
+    #path("google_login/", views.google_login, name="google_login"),
     path("login/", views.common_login, name="common_login"),
     path("logout/", views.logout_view, name="logout"),
-    path("", views.common_login, name="common_login"),
+    path("student/post-login/",views.post_login,name="post_login"),    
     path("student/login/", views.common_login, name="common_login"),
     path("scholarship/login/", views.common_login, name="common_login"),
+    path("create/", scholarship_create, name="scholarship_create"),
     path("scholarship/bulk-upload/template/", views.download_bulk_upload_template, name="download_bulk_upload_template"),
     path("scholarship/bulk-upload/", views.bulk_upload_scholarships, name="bulk_upload_scholarships"),
     path("student/profile/", views.student_profile, name="student_profile"),
@@ -18,11 +19,7 @@ urlpatterns = [
     path("student/profile/submit/", views.student_profile_save, name="student_profile_submit"),
     path("student/profile/save/", views.student_profile_save, name="student_profile_save"),
     path("student/eligible-scholarships/", views.eligible_scholarships, name="eligible_scholarships"),
-    path(
-        "student/scholarship/<int:scholarship_id>/",
-        views.scholarship_detail,
-        name="scholarship_detail",
-    ),
+    path("student/scholarship/<int:scholarship_id>/", views.scholarship_detail,name="scholarship_detail"),
     path("student/dashboard/", views.student_dashboard, name="student_dashboard"),
     path("scholarship/dashboard/", views.scholarship_dashboard, name="scholarship_dashboard"),
     path("scholarship/apply/<int:scholarship_id>/", views.apply_scholarship, name="apply_scholarship"),
@@ -35,29 +32,9 @@ urlpatterns = [
     path("scholarship/award-bulk/",views.bulk_award_scholarships,name="bulk_award_scholarships",),
     path("scholarship/award-bulk/report/", views.download_bulk_award_report, name="download_bulk_award_report"),
     path("scholarship/award-bulk/template/", views.download_award_template,name="download_award_template",),
-    path(
-        "remove_application/<int:application_id>/",
-        views.remove_scholarship_application,
-        name="remove_scholarship_application",
-    ),   
-    path(
-        "scholarship/application-management/",
-        views.application_management,
-        name="application_management",
-    ),
-    path(
-        "scholarship/application/download-all/",
-        views.download_applications,
-        name="download_applications",
-    ),
-    path(
-        "scholarship/application/<str:roll_no>/download/",
-        views.download_application_pdf,
-        name="download_application_pdf",
-    ),
-    path(
-        "scholarship/application/<str:roll_no>/",
-        views.application_detail,
-        name="application_detail",
-    ),
+    path("remove_application/<int:application_id>/", views.remove_scholarship_application, name="remove_scholarship_application"),
+    path("scholarship/application-management/", views.application_management, name="application_management"),
+    path("scholarship/application/download-all/", views.download_applications, name="download_applications"),
+    path("scholarship/application/<str:roll_no>/download/", views.download_application_pdf, name="download_application_pdf"),
+    path("scholarship/application/<str:roll_no>/", views.application_detail, name="application_detail"),
 ]

@@ -13,6 +13,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build: .
 
@@ -23,10 +29,18 @@ services:
       - .env
 
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
     volumes:
       - .:/app
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
 
 volumes:
   mysql_data:

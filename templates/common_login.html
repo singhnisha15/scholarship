@@ -1,139 +1,26 @@
 {% extends "base.html" %}
-
+<!--{% load socialaccount %}-->
 {% block content %}
-
 <style>
-
-.login-page {
-
-    min-height: 80vh;
-
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-    padding: 40px;
-
-}
-
-.login-card {
-
-    width: 100%;
-
-    max-width: 500px;
-
-    background: #ffffff;
-
-    border-radius: 16px;
-
-    padding: 40px;
-
-    text-align: center;
-
-    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-
-}
-
-.login-card h1 {
-
-    margin-bottom: 15px;
-
-    color: #1e3a8a;
-
-    font-size: 28px;
-
-}
-
-.login-card p {
-
-    color: #555;
-
-    margin-bottom: 30px;
-
-    line-height: 1.6;
-
-}
-
-.google-btn {
-
-    display: inline-block;
-
-    background: #4285F4;
-
-    color: white;
-
-    text-decoration: none;
-
-    padding: 14px 30px;
-
-    border-radius: 8px;
-
-    font-size: 16px;
-
-    font-weight: 600;
-
-    transition: 0.3s;
-
-}
-
-.google-btn:hover {
-
-    background: #3367d6;
-
-    transform: translateY(-2px);
-
-}
-
-.logo {
-
-    font-size: 50px;
-
-    margin-bottom: 15px;
-
-}
-
+.login-page { min-height: 80vh; display: flex; justify-content: center; align-items: center; padding: 40px; }
+.login-card { width: 100%; max-width: 500px; background: #fff; border-radius: 16px; padding: 40px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+.login-card h1 { margin-bottom: 15px; color: #1e3a8a; font-size: 28px; }
+.login-card p { color: #555; margin-bottom: 30px; line-height: 1.6; }
+.logo { font-size: 50px; margin-bottom: 15px; }
+.google-btn { display: inline-block; background: #4285F4; color: #fff; text-decoration: none; padding: 14px 30px; border-radius: 8px; font-size: 16px; font-weight: 600; transition: 0.3s; border: none; cursor: pointer; }
+.google-btn:hover { background: #3367d6; transform: translateY(-2px); }
 </style>
-
 <div class="login-page">
-
     <div class="login-card">
-
-        <div class="logo">
-            🎓
-        </div>
-
-        <h1>
-            Scholarship Management System
-        </h1>
-
-        <p>
-            Welcome to the IIT (BHU) Scholarship Management Portal.
-            This is a temporary email-based login for testing.
-            Staff emails will open the staff dashboard, while student emails will open the student portal.
-        </p>
-
-        <form method="post" action="{% url 'google_login' %}">
+        <div class="logo">🎓</div>
+        <h1>Scholarship Management System</h1>
+        <p>Welcome to the IIT (BHU) Scholarship Management Portal. Please sign in using your institute Google account.</p>
+        <form method="post" action="/accounts/google/login/">
             {% csrf_token %}
-            <div style="margin-bottom: 16px; text-align: left;">
-                <label for="email" style="display:block;margin-bottom:6px;font-weight:600;">Email address</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="Enter your institute email"
-                    style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;"
-                >
-            </div>
-            <button type="submit" class="google-btn" style="border:none;cursor:pointer;">
-                Continue to Portal
+            <button type="submit" class="google-btn">
+                Sign in with Google
             </button>
         </form>
-
     </div>
-
 </div>
-
 {% endblock %}

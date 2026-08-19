@@ -278,11 +278,18 @@ class StudentScholarshipProfile(models.Model):
         blank=True,
         default=""
     )
+
+    current_semester = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True
+    )
     admission_batch = models.CharField(
         max_length=20,
         blank=True,
         default=""
     )
+    
     class Meta:
         db_table = "student_scholarship_profile"
 
