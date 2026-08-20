@@ -191,8 +191,8 @@ def google_login(request):
         "office.sch@itbhu.ac.in",
         "nisha.cis@itbhu.ac.in",
         "adoaa_ug@itbhu.ac.in",
-        "adoaa_cc@iitbhu.ac.in",
-        "doaa@iitbhu.ac.in",
+        "adoaa_cc@itbhu.ac.in",
+        "doaa@itbhu.ac.in",
     ]
 
     if email.lower() in office_users:
