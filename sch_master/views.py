@@ -190,6 +190,9 @@ def google_login(request):
         "ar.sch@itbhu.ac.in",
         "office.sch@itbhu.ac.in",
         "nisha.cis@itbhu.ac.in",
+        "adoaa_ug@itbhu.ac.in",
+        "adoaa_cc@iitbhu.ac.in",
+        "doaa@iitbhu.ac.in",
     ]
 
     if email.lower() in office_users:
@@ -1381,6 +1384,7 @@ def post_login(request):
     if not request.user.is_authenticated:
         return redirect("common_login")
     email = (request.user.email or request.session.get("email", "")).strip().lower()
+    #email =  "yashasvi.singh.apd25@itbhu.ac.in"
     if not email:
         messages.error(request, "Unable to determine your authenticated email address.")
         return redirect("common_login")
