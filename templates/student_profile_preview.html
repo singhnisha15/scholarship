@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Scholarship Profile Preview{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-title">Scholarship Profile Submitted Successfully</div>
+    <div class="success-box">Your scholarship profile has been submitted successfully. Please review your submitted information below.</div>
+
+    <h3 style="margin-top:30px;">Student Information</h3>
+    <table class="data-table">
+        <tr>
+            <th>Name</th>
+            <td>{{ student.name }}</td>
+        </tr>
+        <tr>
+            <th>Roll Number</th>
+            <td>{{ student.roll_no }}</td>
+        </tr>
+
+        <tr>
+            <th>Institute Email</th>
+            <td>{{ student.email }}</td>
+        </tr>
+
+        <tr>
+            <th>Programme</th>
+            <td>{{ student.program }}</td>
+        </tr>
+
+        <tr>
+            <th>Department</th>
+            <td>{{ student.department }}</td>
+        </tr>
+
+        <tr>
+            <th>Category</th>
+            <td>{{ student.category }}</td>
+        </tr>
+
+        <tr>
+            <th>Current Batch</th>
+            <td>{{ student.batch }}</td>
+        </tr>
+
+        <tr>
+            <th>Current Semester</th>
+            <td>{{ student.current_semester }}</td>
+        </tr>
+    </table>
+    <h3 style="margin-top:30px;">Scholarship Profile Details</h3>
+    <table class="data-table">
+        <tr>
+            <th>Aadhaar Number</th>
+            <td>{{ profile.aadhaar_number }}</td>
+        </tr>
+
+        <tr>
+            <th>Mobile Number</th>
+            <td>{{ profile.mobile_number }}</td>
+        </tr>
+
+        <tr>
+            <th>Bank Name</th>
+            <td>{{ profile.bank_name }}</td>
+        </tr>
+
+        <tr>
+            <th>Bank Branch</th>
+            <td>{{ profile.bank_branch }}</td>
+        </tr>
+
+        <tr>
+            <th>Bank Account Number</th>
+            <td>{{ profile.account_number }}</td>
+        </tr>
+
+        <tr>
+            <th>IFSC Code</th>
+            <td>{{ profile.ifsc_code }}</td>
+        </tr>
+
+        <tr>
+            <th>Single Parent Child</th>
+            <td>{% if profile.single_parent_child %}Yes{% else %}No{% endif %}</td>
+        </tr>
+        <tr>
+            <th>Annual Household Income</th>
+            <td>₹ {{ profile.annual_income }}</td>
+        </tr>
+        <tr>
+            <th>Class XII Percentage</th>
+            <td>{{ profile.class_12_percentage|default:"N/A" }}%</td>
+        </tr>
+        <tr>
+            <th>JEE Advanced CRL Rank</th>
+            <td>{{ profile.jee_crl_rank }}</td>
+        </tr>
+
+        <tr>
+            <th>JEE Advanced Category Rank</th>
+            <td>{{ profile.jee_category_rank }}</td>
+        </tr>
+    </table>
+    <h3 style="margin-top:30px;">Submitted Supporting Documents</h3>
+    <table class="data-table">
+        <tr>
+            <th>Document</th>
+            <th>Submitted File</th>
+        </tr>
+        <tr>
+            <td>Bank Passbook</td>
+            <td>{% if profile.bank_passbook_file %}<a href="{{ profile.bank_passbook_file.url }}" target="_blank">{{ bank_passbook.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>JEE Advance / JoSAA Certificate</td>
+            <td>{% if profile.jee_certificate_file %}<a href="{{ profile.jee_certificate_file.url }}" target="_blank">{{ jee_certificate.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Category Certificate</td>
+            <td>{% if profile.category_certificate_file %}<a href="{{ profile.category_certificate_file.url }}" target="_blank">{{ category_certificate.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Income Proof</td>
+            <td>{% if profile.income_proof_file %}<a href="{{ profile.income_proof_file.url }}" target="_blank">{{ income_proof.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Class XII Marksheet</td>
+            <td>{% if profile.class_12_marksheet_file %}<a href="{{ profile.class_12_marksheet_file.url }}" target="_blank">{{ class_12_marksheet.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Odd Semester Fee Receipt</td>
+            <td>{% if profile.fee_receipt_odd_semester_file %}<a href="{{ profile.fee_receipt_odd_semester_file.url }}" target="_blank">{{ fee_receipt_odd_semester.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Even Semester Fee Receipt</td>
+            <td>{% if profile.fee_receipt_even_semester_file %}<a href="{{ profile.fee_receipt_even_semester_file.url }}" target="_blank">{{ fee_receipt_even_semester.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Domicile Certificate</td>
+            <td>{% if profile.domicile_certificate_file %}<a href="{{ profile.domicile_certificate_file.url }}" target="_blank">{{ domicile_certificate.filename }}</a>{% else %}Not Uploaded{% endif %}</td>
+        </tr>
+    </table>
+    <div style="margin-top:30px; display:flex; justify-content:space-between; align-items:center;">
+        <a href="{% url 'edit_student_profile' %}" class="btn-save">Edit Profile</a>
+        <a href="{% url 'eligible_scholarships' %}" class="btn-save">View Eligible Scholarships</a>
+    </div>
+</div>
+{% endblock %}

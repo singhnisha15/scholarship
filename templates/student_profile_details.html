@@ -4,35 +4,35 @@
 <div class="card">
   <div class="card-title">Step 1 of 3: Scholarship Profile Details</div>
   <p>Fill in your personal profile details first. After saving, you will upload supporting documents on the next page.</p>
-  <form method="post" action="{% url 'student_profile' %}">
+  <form method="post" action="{% url 'student_profile' %}" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="form-grid">
       <div class="form-group">
-        <label>Aadhaar Number</label>
+        <label>Aadhaar Number<span class="required">*</span></label>
         <input type="text" name="aadhaar_number" maxlength="12" pattern="[0-9]{12}" inputmode="numeric" autocomplete="off" title="Enter 12 digit Aadhaar number" value="{{ profile_data.aadhaar_number|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Latest Mobile Number</label>
+        <label>Latest Mobile Number<span class="required">*</span></label>
         <input type="text" name="mobile_number" maxlength="10" pattern="[6-9][0-9]{9}" inputmode="numeric" title="Enter 10 digit mobile number" value="{{ profile_data.mobile_number|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Bank Name</label>
+        <label>Bank Name<span class="required">*</span></label>
         <input type="text" name="bank_name" value="{{ profile_data.bank_name|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Bank Branch</label>
+        <label>Bank Branch<span class="required">*</span></label>
         <input type="text" name="bank_branch" value="{{ profile_data.bank_branch|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Bank Account Number</label>
+        <label>Bank Account Number<span class="required">*</span></label>
         <input type="text" name="account_number" pattern="[0-9]{9,18}" inputmode="numeric" title="Enter account number (9-18 digits)" value="{{ profile_data.account_number|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>IFSC Code</label>
+        <label>IFSC Code<span class="required">*</span></label>
         <input type="text" name="ifsc_code" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" style="text-transform:uppercase" maxlength="11" title="Enter valid 11 character IFSC (e.g. ABCD0XXXXX)" value="{{ profile_data.ifsc_code|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Single Parent Child</label>
+        <label>Single Parent Child<span class="required">*</span></label>
         <select name="single_parent_child" required>
           <option value="">Select</option>
           <option value="Yes" {% if profile_data.single_parent_child %}selected{% endif %}>Yes</option>
@@ -40,21 +40,23 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Household Income (₹)</label>
+        <label>Household Income (₹)<span class="required">*</span></label>
         <input type="number" name="annual_income" min="0" step="1" max="100000000" value="{{ profile_data.annual_income|default:'' }}" required>
       </div>
       <div class="form-group">
-        <label>Class XII Percentage (%)</label>
+        <label>Class XII Percentage (%)<span class="required">*</span></label>
         <input type="number" name="class_12_percentage" min="0" step="0.01" max="100" value="{{ profile_data.class_12_percentage|default:'' }}">
       </div>
       <div class="form-group">
-        <label>JEE Advanced CRL Rank</label>
+        <label>JEE Advanced CRL Rank<span class="required">*</span></label>
         <input type="number" name="jee_crl_rank" min="1" max="3000000" value="{{ profile_data.jee_crl_rank|default:'' }}" required>
       </div>
+      {% if student.category != "GEN" %}
       <div class="form-group">
-        <label>JEE Advanced Category Rank</label>
+        <label>JEE Advanced Category Rank<span class="required">*</span></label>
         <input type="number" name="jee_category_rank" min="1" max="3000000" value="{{ profile_data.jee_category_rank|default:'' }}" required>
       </div>
+      {% endif %}
     </div>
     <div style="text-align:right; margin-top:20px;">
       <button type="submit" class="btn-save">Save and Continue</button>

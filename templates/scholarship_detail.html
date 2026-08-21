@@ -30,6 +30,10 @@
             <button type="submit" class="btn-save">Apply for Scholarship</button>
         </form>
     </div>
+{% else %}
+    <div class="card">
+        <div class="success-box" style="font-weight: 600; color: #1f7a1f;">You have already applied for this scholarship.</div>
+    </div>
 {% endif %}
 
 {% endblock %}

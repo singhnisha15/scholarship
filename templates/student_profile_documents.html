@@ -8,7 +8,7 @@
     {% csrf_token %}
     <div class="form-grid supporting-grid">
       <div class="form-group compact-upload">
-        <label>Bank Passbook (Identity Page)</label>
+        <label>Bank Passbook (Identity Page)<span class="required">*</span></label>
         <input type="file" name="bank_passbook_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.bank_passbook_file %}required{% endif %}>
         {% if profile and profile.bank_passbook_file %}
         <div class="existing-file">
@@ -18,7 +18,7 @@
         {% endif %}
       </div>
       <div class="form-group compact-upload">
-        <label>JEE Advance / JoSAA Certificate</label>
+        <label>JEE Advance / JoSAA Certificate<span class="required">*</span></label>
         <input type="file" name="jee_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.jee_certificate_file %}required{% endif %}>
         {% if profile and profile.jee_certificate_file %}
         <div class="existing-file">
@@ -27,28 +27,33 @@
         </div>
         {% endif %}
       </div>
-      <div class="form-group compact-upload">
-        <label>Category Certificate</label>
-        <input type="file" name="category_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.category_certificate_file %}required{% endif %}>
-        {% if profile and profile.category_certificate_file %}
-        <div class="existing-file">
-          <span>Existing file:</span>
-          <a href="{{ profile.category_certificate_file.url }}" target="_blank">{{ category_certificate.filename }}</a>
+      {% if student.category != "GEN" %}
+        <div class="form-group compact-upload">
+          <label>Category Certificate<span class="required">*</span></label>
+          <input type="file" name="category_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.category_certificate_file %}required{% endif %}>
+          {% if profile and profile.category_certificate_file %}
+          <div class="existing-file">
+            <span>Existing file:</span>
+            <a href="{{ profile.category_certificate_file.url }}" target="_blank">{{ category_certificate.filename }}</a>
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
-      </div>
-      <div class="form-group compact-upload">
-        <label>Income Proof (PDF)</label>
-        <input type="file" name="income_proof_file" accept=".pdf" {% if not profile or not profile.income_proof_file %}required{% endif %}>
-        {% if profile and profile.income_proof_file %}
-        <div class="existing-file">
-          <span>Existing file:</span>
-          <a href="{{ profile.income_proof_file.url }}" target="_blank">{{ income_proof.filename }}</a>
+      {% endif %}
+
+      {% if profile and profile.annual_income < 800000 %}
+        <div class="form-group compact-upload">
+          <label>Income Proof (PDF)<span class="required">*</span></label>
+          <input type="file" name="income_proof_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.income_proof_file %}required{% endif %}>
+          {%if profile.income_proof_file %}
+          <div class="existing-file">
+            <span>Existing file:</span>
+            <a href="{{ profile.income_proof_file.url }}" target="_blank">{{ income_proof.filename }}</a>
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
-      </div>
+      {% endif %}
       <div class="form-group compact-upload">
-        <label>Class XII Marksheet / Passing Certificate</label>
+        <label>Class XII Marksheet / Passing Certificate<span class="required">*</span></label>
         <input type="file" name="class_12_marksheet_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.class_12_marksheet_file %}required{% endif %}>
         {% if profile and profile.class_12_marksheet_file %}
         <div class="existing-file">
@@ -58,7 +63,7 @@
         {% endif %}
       </div>
       <div class="form-group compact-upload">
-        <label>Most Recent Odd Semester Fee Receipt</label>
+        <label>Most Recent Odd Semester Fee Receipt<span class="required">*</span></label>
         <input type="file" name="fee_receipt_odd_semester_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.fee_receipt_odd_semester_file %}required{% endif %}>
         {% if profile and profile.fee_receipt_odd_semester_file %}
         <div class="existing-file">
@@ -68,7 +73,7 @@
         {% endif %}
       </div>
       <div class="form-group compact-upload">
-        <label>Most Recent Even Semester Fee Receipt</label>
+        <label>Most Recent Even Semester Fee Receipt<span class="required">*</span></label>
         <input type="file" name="fee_receipt_even_semester_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.fee_receipt_even_semester_file %}required{% endif %}>
         {% if profile and profile.fee_receipt_even_semester_file %}
         <div class="existing-file">
@@ -78,7 +83,7 @@
         {% endif %}
       </div>
       <div class="form-group compact-upload">
-        <label>Domicile Certificate</label>
+        <label>Domicile Certificate<span class="required">*</span></label>
         <input type="file" name="domicile_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile or not profile.domicile_certificate_file %}required{% endif %}>
         {% if profile and profile.domicile_certificate_file %}
         <div class="existing-file">

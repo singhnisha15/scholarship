@@ -2,15 +2,15 @@
         {% csrf_token %}
         <div class="form-grid">
           <div class="form-group">
-            <label>Aadhaar Number</label>
+            <label>Aadhaar Number<span class="required">*</span></label>
             <input type="text" name="aadhaar_number" maxlength="12" pattern="[0-9]{12}" inputmode="numeric" autocomplete="off" title="Enter 12 digit Aadhaar number" value="{{ profile.aadhaar_number|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>Latest Mobile Number</label>
+            <label>Latest Mobile Number<span class="required">*</span></label>
             <input type="text" name="mobile_number" maxlength="10" pattern="[6-9][0-9]{9}" inputmode="numeric" title="Enter 10 digit mobile number" value="{{ profile.mobile_number|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>Bank Name</label>
+            <label>Bank Name<span class="required">*</span></label>
             <input type="text" name="bank_name" value="{{ profile.bank_name|default:'' }}" required>
             <div class="upload-inline">
               <label>Bank Passbook (Identity Page)</label>
@@ -25,19 +25,19 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Bank Branch</label>
+            <label>Bank Branch<span class="required">*</span></label>
             <input type="text" name="bank_branch" value="{{ profile.bank_branch|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>Bank Account Number</label>
+            <label>Bank Account Number<span class="required">*</span></label>
             <input type="text" name="account_number" pattern="[0-9]{9,18}" inputmode="numeric" title="Enter account number (9-18 digits)" value="{{ profile.account_number|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>IFSC Code</label>
+            <label>IFSC Code<span class="required">*</span></label>
             <input type="text" name="ifsc_code" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" style="text-transform:uppercase" maxlength="11" maxlength="11" title="Enter valid 11 character IFSC (e.g. ABCD0XXXXX)" value="{{ profile.ifsc_code|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>Single Parent Child</label>
+            <label>Single Parent Child<span class="required">*</span></label>
             <select name="single_parent_child" required>
               <option value="">Select</option>
               <option value="Yes" {% if profile.single_parent_child %}selected{% endif %}>Yes</option>
@@ -45,7 +45,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Household Income (₹)</label>
+            <label>Household Income (₹)<span class="required">*</span></label>
             <input type="number" name="annual_income" min="0" step="1" max="100000000" value="{{ profile.annual_income|default:'' }}" required>
             <div class="upload-inline">
               <label>Income Proof (PDF)</label>
@@ -59,10 +59,10 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Class XII Percentage (%)</label>
+            <label>Class XII Percentage (%)<span class="required">*</span></label>
             <input type="number" name="class_12_percentage" min="0" step="0.01" max="100" value="{{ profile.class_12_percentage|default:'' }}">
             <div class="upload-inline">
-              <label>Class XII Marksheet / Passing Certificate</label>
+              <label>Class XII Marksheet / Passing Certificate<span class="required">*</span></label>
               <input type="file" name="class_12_marksheet_file" accept=".pdf,.jpg,.jpeg,.png">
               {% if profile.class_12_marksheet_file %}
               <div class="existing-file">
@@ -73,11 +73,11 @@
             </div>
           </div>
           <div class="form-group">
-            <label>JEE Advanced CRL Rank</label>
+            <label>JEE Advanced CRL Rank<span class="required">*</span></label>
             <input type="number" name="jee_crl_rank" min="1" max="3000000" value="{{ profile.jee_crl_rank|default:'' }}" required>
           </div>
           <div class="form-group">
-            <label>JEE Advanced Category Rank</label>
+            <label>JEE Advanced Category Rank<span class="required">*</span></label>
             <input type="number" name="jee_category_rank" min="1" max="3000000" value="{{ profile.jee_category_rank|default:'' }}" required>
           </div>
         </div>
@@ -91,7 +91,7 @@
     </div>
     <div class="form-grid supporting-grid">
         <div class="form-group compact-upload">
-            <label>JEE Advance / JoSAA Certificate</label>
+            <label>JEE Advance / JoSAA Certificate<span class="required">*</span></label>
             <input type="file" name="jee_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.jee_certificate_file %}required{% endif %}>
             {% if profile.jee_certificate_file %}
             <div class="existing-file">
@@ -102,7 +102,7 @@
         </div>
 
         <div class="form-group compact-upload">
-            <label>Category Certificate</label>
+            <label>Category Certificate<span class="required">*</span></label>
             <input type="file" name="category_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.category_certificate_file %}required{% endif %}>
             {% if profile.category_certificate_file %}
             <div class="existing-file">
@@ -113,7 +113,7 @@
         </div>
 
         <div class="form-group compact-upload">
-            <label>Most Recent Odd Semester Fee Receipt</label>
+            <label>Most Recent Odd Semester Fee Receipt<span class="required">*</span></label>
             <input type="file" name="fee_receipt_odd_semester_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.fee_receipt_odd_semester_file %}required{% endif %}>
             {% if profile.fee_receipt_odd_semester_file %}
             <div class="existing-file">
@@ -124,7 +124,7 @@
         </div>
 
         <div class="form-group compact-upload">
-            <label>Most Recent Even Semester Fee Receipt</label>
+            <label>Most Recent Even Semester Fee Receipt<span class="required">*</span></label>
             <input type="file" name="fee_receipt_even_semester_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.fee_receipt_even_semester_file %}required{% endif %}>
             {% if profile.fee_receipt_even_semester_file %}
             <div class="existing-file">
@@ -135,7 +135,7 @@
         </div>
 
         <div class="form-group compact-upload">
-            <label>Domicile Certificate</label>
+            <label>Domicile Certificate<span class="required">*</span></label>
             <input type="file" name="domicile_certificate_file" accept=".pdf,.jpg,.jpeg,.png" {% if not profile.domicile_certificate_file %}required{% endif %}>
             {% if profile.domicile_certificate_file %}
             <div class="existing-file">

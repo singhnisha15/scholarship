@@ -50,7 +50,8 @@
     <div class="card">
       <div class="card-title">Scholarship Profile Completed</div>
       <div class="success-box">Your scholarship profile has been completed successfully.</div>
-      <div style="margin-top:20px; text-align:center;">
+      <div style="margin-top:20px; text-align:center; display:flex; justify-content:center; gap:12px;">
+        <a href="{% url 'student_profile_preview' %}" class="btn-save">View Submitted Profile</a>
         <a href="{% url 'eligible_scholarships' %}" class="btn-save">View Eligible Scholarships</a>
       </div>
     </div>

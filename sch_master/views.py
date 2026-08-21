@@ -13,6 +13,7 @@ from .services.academic_api import get_student_details, get_photo_url, get_spi_c
 import pandas as pd
 from .models import ScholarshipMaster, CriteriaMaster, ScholarshipCriteria, StudentScholarshipProfile, StudentScholarship, StudentScholarshipAward
 from django.utils import timezone
+import time
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -222,10 +223,6 @@ def student_profile(request):
     if existing_award.exists():
         return render(request, "already_awarded.html", {"awards": existing_award, "student": student_data})
 
-    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
-    if profile and profile.is_profile_complete and not edit_mode:
-        return redirect("eligible_scholarships")
-
     if request.method == "POST":
         annual_income = request.POST.get("annual_income")
         class_12_percentage = request.POST.get("class_12_percentage")
@@ -255,6 +252,10 @@ def student_profile(request):
         profile.class_12_percentage = _coerce_decimal(class_12_percentage)
         profile.save()
         return redirect("student_profile_documents")
+
+    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
+    if profile and profile.is_profile_complete and not edit_mode:
+        return redirect("eligible_scholarships")
     
     profile_data = request.session.get("student_profile_data")
     if not profile_data and profile:
@@ -293,10 +294,15 @@ def _profile_document_field_map():
     }
 
 
+"""def _profile_document_storage_name(roll_no, field_name):
+    purpose = _profile_document_field_map().get(field_name, field_name)
+    safe_roll = str(roll_no or "student").replace("/", "_").replace("\\", "_")
+    return f"{safe_roll}_{purpose}.pdf" """
+
 def _profile_document_storage_name(roll_no, field_name):
     purpose = _profile_document_field_map().get(field_name, field_name)
     safe_roll = str(roll_no or "student").replace("/", "_").replace("\\", "_")
-    return f"{safe_roll}_{purpose}.pdf"
+    return f"{safe_roll}_{purpose}_{int(time.time())}.pdf"
 
 
 def _profile_document_storage_path(roll_no, field_name):
@@ -386,26 +392,21 @@ def _render_document_to_pdf_bytes(uploaded_file, title):
     return packet.getvalue()
 
 
-def _save_profile_document(profile, field_name, uploaded_file):
-    if not uploaded_file:
-        return None
-
+"""def _save_profile_document(profile, field_name, uploaded_file):
+    if not uploaded_file: return None
     title = _profile_document_field_map().get(field_name, field_name).replace("_", " ").title()
     pdf_bytes = _render_document_to_pdf_bytes(uploaded_file, title)
     if not pdf_bytes:
         return None
 
     filename = _profile_document_storage_name(getattr(profile, "roll_no", None), field_name)
-    output_path = os.path.join(settings.MEDIA_ROOT, filename)
-
+    output_path = os.path.join(settings.MEDIA_ROOT, filename
     existing_value = getattr(profile, field_name, None)
     if existing_value:
         try:
             if isinstance(existing_value, str):
-                candidate_paths = [
-                    os.path.join(settings.MEDIA_ROOT, existing_value),
-                    os.path.join(settings.MEDIA_ROOT, "documents", existing_value),
-                ]
+                candidate_paths = [os.path.join(settings.MEDIA_ROOT, existing_value),
+                                    os.path.join(settings.MEDIA_ROOT, "documents", existing_value),]
                 for candidate in candidate_paths:
                     if os.path.exists(candidate):
                         os.remove(candidate)
@@ -413,11 +414,32 @@ def _save_profile_document(profile, field_name, uploaded_file):
                 existing_value.delete(save=False)
         except Exception:
             pass
-
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "wb") as handle:
         handle.write(pdf_bytes)
 
+    setattr(profile, field_name, filename)
+    profile.save(update_fields=[field_name])
+    return filename"""
+
+def _save_profile_document(profile, field_name, uploaded_file):
+    if not uploaded_file: return None
+    title = _profile_document_field_map().get(field_name, field_name).replace("_", " ").title()
+    pdf_bytes = _render_document_to_pdf_bytes(uploaded_file, title)
+    if not pdf_bytes: return None
+    existing_value = getattr(profile, field_name, None)
+    filename = _profile_document_storage_name(profile.roll_no, field_name)
+    output_path = os.path.join(settings.MEDIA_ROOT, filename)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "wb") as handle: handle.write(pdf_bytes)
+    if existing_value:
+        try:
+            old_name = getattr(existing_value, "name", None)
+            if old_name:
+                old_path = os.path.join(settings.MEDIA_ROOT, old_name)
+                if os.path.exists(old_path): os.remove(old_path)
+        except Exception:
+            pass
     setattr(profile, field_name, filename)
     profile.save(update_fields=[field_name])
     return filename
@@ -432,10 +454,15 @@ def student_profile_documents(request):
     profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
     if not profile:
         return redirect("student_profile")
-
+    
     if request.method == "POST":
+        MAX_FILE_SIZE = 500 * 1024
+        for uploaded_file in request.FILES.values():
+            if uploaded_file.size > MAX_FILE_SIZE:
+                messages.error(request,"Each uploaded file must be smaller than 500 KB. The file '{uploaded_file.name}' is too large.".format(uploaded_file=uploaded_file))
+                return redirect("student_profile_documents")
+        
         profile = StudentScholarshipProfile.objects.get(roll_no=roll_no)
-
         for field_name in [
             "bank_passbook_file",
             "jee_certificate_file",
@@ -483,10 +510,36 @@ def student_profile_save(request):
         profile.no_disciplinary_action = True
         profile.is_profile_complete = True
         profile.save()
-        messages.success(request, "Profile saved successfully.")
-        return redirect("eligible_scholarships")
+        messages.success(request, "Scholarship profile submitted successfully.")
+        return redirect("student_profile_preview")
 
+    ##### GET: Show declaration page   #####
     return render(request, "student_profile_declaration.html", {
+        "student": student_data,
+        "profile": profile,
+        "bank_passbook": file_details(profile.bank_passbook_file),
+        "jee_certificate": file_details(profile.jee_certificate_file),
+        "category_certificate": file_details(profile.category_certificate_file),
+        "income_proof": file_details(profile.income_proof_file),
+        "class_12_marksheet": file_details(profile.class_12_marksheet_file),
+        "fee_receipt_odd_semester": file_details(profile.fee_receipt_odd_semester_file),
+        "fee_receipt_even_semester": file_details(profile.fee_receipt_even_semester_file),
+        "domicile_certificate": file_details(profile.domicile_certificate_file),
+    })
+
+
+def student_profile_preview(request):
+    student_data = request.session.get("student_data")
+    if not student_data:
+        return redirect("common_login")
+    roll_no = student_data["roll_no"]
+    profile = StudentScholarshipProfile.objects.filter(roll_no=roll_no).first()
+    if not profile:
+        return redirect("student_profile")
+    if not profile.is_profile_complete:
+        return redirect("student_profile")
+
+    return render(request, "student_profile_preview.html", {
         "student": student_data,
         "profile": profile,
         "bank_passbook": file_details(profile.bank_passbook_file),
@@ -567,7 +620,7 @@ def is_scholarship_eligible(scholarship, student, profile):
                 return False, reasons
         elif name == "Current Semester":
                     allowed = json.loads(value)
-                    student_semester = student.get("current_semester") or extract_current_semester(student.get("batch", ""))
+                    student_semester = student.get("current_semester") or extract_current_semester(student.get("batch", ""), student.get("admit_year", ""))
                     print(f"Current Semester => Student={student_semester} Allowed={allowed}")
                     if student_semester not in allowed:
                         reason = f"Current semester criteria mismatch: student semester '{student_semester}' is not in {allowed}."
@@ -739,7 +792,7 @@ def student_dashboard(request):
 
         current_batch = (student_api_data.get("Current Batch") or "").strip()
         admission_batch = (student_api_data.get("admit_year") or "").strip()
-        current_semester = extract_current_semester(current_batch)
+        current_semester = extract_current_semester(current_batch, admission_batch)
 
         student = {
             "roll_no": (student_api_data.get("Roll No") or "").strip(),
@@ -1363,12 +1416,25 @@ def download_applications(request):
     return FileResponse(open(temp.name, "rb"), as_attachment=True, filename="Scholarship_Applications.zip")
 
 
-def extract_current_semester(current_batch):
-    """Convert the academic API's Current Batch string into the normalized semester format used by the scholarship DB."""
-    if not current_batch: return ""
+def extract_current_semester(current_batch, admit_year=""):
+    if not current_batch:
+        return ""
     text = str(current_batch).strip()
+    # Normal API value: IX-Semester / Semester-IX
     match = re.search(r'\bSemester[-\s]*([IVX]+)\b|([IVX]+)[-\s]*Semester\b', text, re.IGNORECASE)
-    return f"Semester-{(match.group(1) or match.group(2)).upper()}" if match else ""
+    if match:
+        return f"Semester-{(match.group(1) or match.group(2)).upper()}"
+    # Fallback: derive from current academic year
+    if admit_year:
+        admission_year = int(admit_year.split("-")[0])
+        today = datetime.today()
+        # Academic year: July to June
+        current_academic_year = today.year if today.month >= 7 else today.year - 1
+        semester = (current_academic_year - admission_year) * 2 + 1
+        roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
+        if 1 <= semester <= len(roman):
+            return f"Semester-{roman[semester - 1]}"
+    return ""
 
 def post_login(request):
     """Entry point after successful Google authentication."""
@@ -1384,10 +1450,11 @@ def post_login(request):
     if not request.user.is_authenticated:
         return redirect("common_login")
     email = (request.user.email or request.session.get("email", "")).strip().lower()
-    #email =  "yashasvi.singh.apd25@itbhu.ac.in"
+    #email =  "aditi.saha.mec22@itbhu.ac.in"  # Hardcoded for testing purposes; replace with the line above in production
     if not email:
         messages.error(request, "Unable to determine your authenticated email address.")
         return redirect("common_login")
+        
 
     request.session["email"] = email
     user_type = request.session.get("user_type")

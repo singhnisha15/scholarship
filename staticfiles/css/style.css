@@ -280,3 +280,31 @@ small { display: block; margin-top: 5px; color: #777; }
 .login-support a:hover {
     text-decoration: underline;
 }
+
+.required {
+    color: red;
+    font-weight: bold;
+    margin-left: 3px;
+}
+
+.declaration-confirmation {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 22px;
+}
+
+.declaration-confirmation input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.declaration-confirmation label {
+    text-align: left;
+    margin: 0;
+    cursor: pointer;
+    line-height: 1.5;
+}

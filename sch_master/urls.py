@@ -37,4 +37,5 @@ urlpatterns = [
     path("scholarship/application/download-all/", views.download_applications, name="download_applications"),
     path("scholarship/application/<str:roll_no>/download/", views.download_application_pdf, name="download_application_pdf"),
     path("scholarship/application/<str:roll_no>/", views.application_detail, name="application_detail"),
+    path("student/profile/preview/", views.student_profile_preview, name="student_profile_preview"),
 ]
