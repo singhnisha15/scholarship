@@ -758,6 +758,14 @@ def student_dashboard(request):
     student = request.session.get("student_data")
     academic_api_data = request.session.get("academic_api_data")
 
+    # B.Tech and IDD students are allowed to access the scholarship portal. Other programs are not allowed.
+    programme = (academic_api_data.get("prg") or "").strip()
+    if programme not in ["B.Tech", "IDD"]:
+        logout(request)
+        request.session.flush()
+        messages.error(request, "The Scholarship Portal is presently available only for B.Tech. and IDD students.")
+        return redirect("common_login")
+    
     google_email = normalize_institute_email(email)
     api_email = normalize_institute_email(academic_api_data.get("email"))
 
